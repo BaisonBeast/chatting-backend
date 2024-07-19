@@ -8,24 +8,24 @@ import MessageRoutes from './routes/Message.js';
 import ChatRoutes from './routes/Chat.js';
 
 
-const app = express();
 dotenv.config();
-const PORT = process.env.PORT || 5000;
-const server = http.createServer(app);
-const io = new Server(server, {
-  cors: {
-    origin: 'http://localhost:5737',
-    methods: ['GET', 'POST']
-  }
-});
-
-connectDB();
-
+const app = express();
 app.use(cors());
 app.use(express.json());
+connectDB();
+
+const PORT = 5000;
+const server = http.createServer(app);
 
 app.use('/api/messages', MessageRoutes);
 app.use('/api/chat', ChatRoutes);
+
+const io = new Server(server, {
+  cors: {
+    origin: 'http://localhost:5173',
+    methods: ['GET', 'POST']
+  }
+});
 
 io.on('connection', (socket) => {
   console.log('a user connected');
@@ -43,9 +43,18 @@ io.on('connection', (socket) => {
     console.log('user disconnected');
   });
 });
+io.engine.on("connection_error", (err) => {
+  console.log(err.req);      // the request object
+  console.log(err.code);     // the error code, for example 1
+  console.log(err.message);  // the error message, for example "Session ID unknown"
+  console.log(err.context);  // some additional error context
+});
 
-//run listen
-app.listen(PORT, () => {
+app.get('/', function(req, res) {
+  res.send('Hello')
+})
+
+server.listen(PORT, () => {
     console.log(
         `Server Running on port ${PORT}`
     );

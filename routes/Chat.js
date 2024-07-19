@@ -31,7 +31,7 @@ router.post('/createChat', async (req, res) => {
     });
 
     const chat = await newChat.save();
-    res.status(201).json({ newChat });
+    res.status(201).json({  chatId, chatName, chatTime});
   } catch (err) {
     res.status(500).send('Server Error');
   }
