@@ -38,6 +38,19 @@ router.post('/createChat', async (req, res) => {
   }
 });
 
+router.delete('/deleteChat/:chatId', async (req, res) => {
+  const { chatId } = req.params;
+  try {
+    const chat = await Chat.findOneAndDelete({ chatId });
+    if (!chat) {
+      return res.status(404).json({ message: 'Chat not found' });
+    }
+    res.status(200).json({ message: 'Chat deleted successfully' });
+  } catch (err) {
+    res.status(500).send('Server Error');
+  }
+});
+
 // User login
 // router.post('/api/login', async (req, res) => {
 //     const { email, password } = req.body;
