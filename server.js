@@ -9,16 +9,13 @@ import ChatRoutes from './routes/Chat.js';
 
 
 dotenv.config();
+connectDB();
 const app = express();
 app.use(cors());
 app.use(express.json());
-connectDB();
 
 const PORT = 5000;
 const server = http.createServer(app);
-
-app.use('/api/messages', MessageRoutes);
-app.use('/api/chat', ChatRoutes);
 
 const io = new Server(server, {
   cors: {
@@ -27,22 +24,26 @@ const io = new Server(server, {
   }
 });
 
+app.use((req, res, next) => {
+  req.io = io;
+  next();
+});
+
+app.use('/api/messages', MessageRoutes);
+app.use('/api/chat', ChatRoutes);
+
 io.on('connection', (socket) => {
   console.log('a user connected');
-
   socket.on('joinChat', (chatId) => {
     socket.join(chatId);
     console.log(`User joined chat: ${chatId}`);
-  });
-
-  socket.on('sendMessage', (message) => {
-    io.to(message.chatId).emit('receiveMessage', message);
   });
 
   socket.on('disconnect', () => {
     console.log('user disconnected');
   });
 });
+
 io.engine.on("connection_error", (err) => {
   console.log(err.req);      // the request object
   console.log(err.code);     // the error code, for example 1
@@ -59,5 +60,3 @@ server.listen(PORT, () => {
         `Server Running on port ${PORT}`
     );
 });
-
-
