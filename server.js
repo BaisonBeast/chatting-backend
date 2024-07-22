@@ -6,6 +6,7 @@ import { Server } from 'socket.io';
 import cors from 'cors';
 import MessageRoutes from './routes/Message.js';
 import ChatRoutes from './routes/Chat.js';
+import ChatUserRoutes from './routes/ChatUser.js';
 
 
 dotenv.config();
@@ -31,6 +32,7 @@ app.use((req, res, next) => {
 
 app.use('/api/messages', MessageRoutes);
 app.use('/api/chat', ChatRoutes);
+app.use('/api/chatUser', ChatUserRoutes);
 
 io.on('connection', (socket) => {
   console.log('a user connected');

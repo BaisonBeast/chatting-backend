@@ -1,10 +1,8 @@
 import express from 'express';
 import Chat from '../models/Chat.js';
-import bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
 
 const router = express.Router();
-const salt = await bcrypt.genSalt(10);
 
 // Get all chats
 router.get('/getAllChats', async (req, res) => {
@@ -50,25 +48,5 @@ router.delete('/deleteChat/:chatId', async (req, res) => {
     res.status(500).send('Server Error');
   }
 });
-
-// User login
-// router.post('/api/login', async (req, res) => {
-//     const { email, password } = req.body;
-//     try {
-//       const user = await User.findOne({ email });
-//       if (!user) {
-//         return res.status(400).json({ message: 'Invalid credentials' });
-//       }
-  
-//       const isMatch = await bcrypt.compare(password, user.password);
-//       if (!isMatch) {
-//         return res.status(400).json({ message: 'Invalid credentials' });
-//       }
-  
-//       res.json({ username: user.username});
-//     } catch (err) {
-//       res.status(500).send('Server Error');
-//     }
-//   });
 
 export default router;
