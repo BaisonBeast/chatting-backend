@@ -18,6 +18,11 @@ router.get('/:chatId', async (req, res) => {
   }
 });
 
+//Delete message 
+router.delete('/delete', async(req, res) => {
+
+});
+
 
 // Send a new message
 router.post('/newMessage', async (req, res) => {
