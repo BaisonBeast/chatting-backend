@@ -1,6 +1,7 @@
 import express from 'express';
 import ChatUser from '../models/ChatUser.js';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
+
 
 const router = express.Router();
 
