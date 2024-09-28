@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "module": "ESNext", 
+    "target": "ESNext", // ESNext is good for latest JS syntax // Keep module system for ES Modules
+    "moduleResolution": "node", // Use Node.js style module resolution
+    "esModuleInterop": true, // To support CommonJS interop
+    "skipLibCheck": true, // Speeds up the build process
+    "forceConsistentCasingInFileNames": true, // Consistent casing
+    "strict": true, // Strict type-checking for better code quality
+    "outDir": "./dist", // Compiled .js files will go here
+    "rootDir": "./src", // Source files in the 'src' folder
+    "resolveJsonModule": true, // Allow JSON imports
+    "noEmitOnError": true, // Do not emit files if there's an error
+    "types": ["node"], // Include Node.js types globally
+    "baseUrl": "./", // Base URL for imports
+    "paths": {
+      "@utils/*": ["src/utils/*"], // Custom path alias for utilities
+      "@models/*": ["src/models/*"] // Custom path alias for models
+    }
+  },
+  "include": ["src/**/*"], // Include all source files
+  "exclude": ["node_modules", "dist"] // Exclude unnecessary folders
+}
