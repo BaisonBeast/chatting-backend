@@ -36,10 +36,6 @@ const GroupSchema = new mongoose.Schema(
                 type: ParticipantSchema,
             },
         ],
-        background: {
-            type: Number,
-            default: 1,
-        },
     },
     { timestamps: true }
 );

@@ -4,6 +4,8 @@ import {
     acceptInvite,
     deleteChat,
     createInvite,
+    getAllInvites,
+    rejectInvite
 } from "../controllers/ChatController";
 
 const router = express.Router();
@@ -11,9 +13,16 @@ const router = express.Router();
 // Get all chats
 router.get("/getAllChats", getAllChats);
 
-// Create a new chat
-router.post("/createNewChat", acceptInvite);
+//Get all invites
+router.get("/getAllInvites", getAllInvites);
 
+// Create a new chat
+router.post("/acceptInvite", acceptInvite);
+
+// Create a new chat
+router.post("/rejectInvite", rejectInvite);
+
+// Create a new invite
 router.post("/inviteUser", createInvite);
 
 // Delete a existing chat

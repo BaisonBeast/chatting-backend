@@ -4,8 +4,32 @@ import { Status } from "src/enums/status.enum";
 import ChatUser from "@models/ChatUserModel";
 import Chat from "../models/ChatModel";
 
+const getAllInvites = async (req: Request, res: Response) => {
+    const { email } = req.query;
+    try {
+        const user = await ChatUser.findOne({ email })
+        if (!user) {
+            return res.status(StatusCodes.NOT_FOUND).json({
+                status: Status.FAILED,
+                message: "User not Exist with this email..",
+            });
+        }
+        console.log(user.inviteList)
+        res.status(StatusCodes.OK).json({
+            status: Status.SUCCESS,
+            message: "All invitelist fetched",
+            data: user.inviteList,
+        });
+    } catch (err) {
+        console.log(err);
+        return res
+            .status(StatusCodes.INTERNAL_SERVER_ERROR)
+            .json({ status: Status.FAILED, message: "Something Went Wrong" });
+    }
+};
+
 const getAllChats = async (req: Request, res: Response) => {
-    const { email } = req.body;
+    const { email } = req.query;
     try {
         const user = await ChatUser.findOne({ email }).populate({
             path: "chatList",
@@ -82,6 +106,30 @@ const createInvite = async (req: Request, res: Response) => {
     }
 };
 
+const rejectInvite = async(req: Request, res: Response) => {
+    const { loggedUserEmail, newUserEmail } = req.body;
+    try {
+        const user = await ChatUser.findOne({ email: loggedUserEmail });
+        if (!user) {
+            return res.status(StatusCodes.NOT_FOUND).json({
+                status: Status.FAILED,
+                message: "User not Exist with this email..",
+            });
+        }
+        user.inviteList.pull({ email: newUserEmail });
+        await user.save();
+        
+        return res
+            .status(StatusCodes.OK)
+            .json({ status: Status.SUCCESS, message: "Invite removed successfully" });
+    } catch(err) {
+        console.log(err);
+        return res
+            .status(StatusCodes.INTERNAL_SERVER_ERROR)
+            .json({ status: Status.FAILED, message: "Something Went Wrong" });
+    }
+}
+
 const acceptInvite = async (req: Request, res: Response) => {
     const { loggedUserEmail, newUserEmail } = req.body;
     try {
@@ -122,7 +170,7 @@ const acceptInvite = async (req: Request, res: Response) => {
 
         res.status(StatusCodes.CREATED).json({
             status: Status.SUCCESS,
-            message: "Successfully Created",
+            message: "User added to the chatlist",
             data: participants,
         });
     } catch (error) {
@@ -152,4 +200,4 @@ const deleteChat = async (req: Request, res: Response) => {
     }
 };
 
-export { getAllChats, acceptInvite, deleteChat, createInvite };
+export { getAllChats, acceptInvite, deleteChat, createInvite, getAllInvites, rejectInvite };

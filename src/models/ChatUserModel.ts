@@ -30,10 +30,14 @@ const ChatUserSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
-    friends: {
-        type: [String],
-        default: [],
+    background: {
+        type: Number,
+        default: 1,
     },
+    friends: [{
+        type: String,
+        default: [],
+    }],
     chatList: [
         {
             type: mongoose.Schema.Types.ObjectId,

@@ -23,10 +23,6 @@ const ChatSchema = new mongoose.Schema(
                 required: true,
             },
         ],
-        background: {
-            type: Number,
-            default: 1,
-        },
         messages: [
             {
                 type: mongoose.Schema.Types.ObjectId,
@@ -34,9 +30,6 @@ const ChatSchema = new mongoose.Schema(
                 default: [],
             },
         ],
-        lastMessage: {
-            type: String,
-        }
     },
     { timestamps: true }
 );
