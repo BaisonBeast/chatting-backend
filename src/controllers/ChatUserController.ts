@@ -92,4 +92,51 @@ const registerUser = async (req: Request, res: Response) => {
     }
 };
 
-export { loginUser, registerUser };
+const updateUser = async(req: Request, res: Response) => {
+    const { username, background, email} = req.body;
+    console.log(req.body)
+
+    const file = req.file as Express.Multer.File ?? null;
+    try {
+        const user = await ChatUser.findOne({ email });
+        if (!user) {
+            return res.status(StatusCodes.CONFLICT).json({
+                status: Status.FAILED,
+                message: "User not found with this email",
+            });
+        }
+        if(file) {
+            const profilePictureUrl: string = await uploadImage(file);
+            user.profilePic = profilePictureUrl;
+        }
+
+        if(user.username !== username) user.username = username;
+        if(user.background !== background) user.background = background;
+
+        await user.save();
+
+        const dataToSend = {
+            id: user._id,
+            email: user.email,
+            username: user.username,
+            profilePic: user.profilePic,
+            background: user.background
+        };
+
+        return res
+        .status(StatusCodes.OK)
+        .json({ 
+            status: Status.SUCCESS, 
+            data: dataToSend,
+            message: "User Successfully Updated!!",
+        });
+
+    } catch(err) {
+        console.log(err);
+        return res
+            .status(StatusCodes.INTERNAL_SERVER_ERROR)
+            .json({ status: Status.FAILED, message: "Something Went Wrong" });
+    }
+}
+
+export { loginUser, registerUser, updateUser };
