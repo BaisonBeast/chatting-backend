@@ -16,8 +16,8 @@ const getAllMessages = async (req: Request, res: Response) => {
         }
         res.status(StatusCodes.OK).json({
             status: Status.SUCCESS,
-            message: "All chatList fetched",
-            data: chat,
+            message: "All messages fetched",
+            data: chat.messages,
         });
     } catch (err) {
         console.log(err);
@@ -51,7 +51,7 @@ const createNewMessage = async (req: Request, res: Response) => {
         res.status(StatusCodes.OK).json({
             status: Status.SUCCESS,
             message: "Message Sent",
-            data: chat,
+            data: newMessage,
         });
     } catch (err) {
         console.log(err);

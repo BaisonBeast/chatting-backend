@@ -46,7 +46,7 @@ const loginUser = async (req: Request, res: Response) => {
 
 const registerUser = async (req: Request, res: Response) => {
     const { email, password, username } = req.body;
-    const file = req.file as Express.Multer.File;
+    const file = req.file as Express.Multer.File ?? null;
     try {
         const user = await ChatUser.findOne({ email });
         if (user) {
@@ -94,7 +94,6 @@ const registerUser = async (req: Request, res: Response) => {
 
 const updateUser = async(req: Request, res: Response) => {
     const { username, background, email} = req.body;
-    console.log(req.body)
 
     const file = req.file as Express.Multer.File ?? null;
     try {
@@ -110,8 +109,8 @@ const updateUser = async(req: Request, res: Response) => {
             user.profilePic = profilePictureUrl;
         }
 
-        if(user.username !== username) user.username = username;
-        if(user.background !== background) user.background = background;
+        if(username !== '' && user.username !== username) user.username = username;
+        if(user.background != background) user.background = background;
 
         await user.save();
 

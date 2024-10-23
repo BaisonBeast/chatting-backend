@@ -7,14 +7,14 @@ import Chat from "../models/ChatModel";
 const getAllInvites = async (req: Request, res: Response) => {
     const { email } = req.query;
     try {
-        const user = await ChatUser.findOne({ email })
+        const user = await ChatUser.findOne({ email });
         if (!user) {
             return res.status(StatusCodes.NOT_FOUND).json({
                 status: Status.FAILED,
                 message: "User not Exist with this email..",
             });
         }
-        console.log(user.inviteList)
+        console.log(user.inviteList);
         res.status(StatusCodes.OK).json({
             status: Status.SUCCESS,
             message: "All invitelist fetched",
@@ -67,6 +67,14 @@ const createInvite = async (req: Request, res: Response) => {
                 message: "User not Exist with this email..",
             });
         }
+        const invitedUser = await ChatUser.findOne({ email: inviteeEmail });
+        if (!invitedUser) {
+            return res.status(StatusCodes.NOT_FOUND).json({
+                status: Status.FAILED,
+                message: "User not Exist with this email..",
+            });
+        }
+
         const match = user.friends.includes(inviteeEmail);
         if (match) {
             return res.status(StatusCodes.CONFLICT).json({
@@ -106,10 +114,12 @@ const createInvite = async (req: Request, res: Response) => {
     }
 };
 
-const rejectInvite = async(req: Request, res: Response) => {
+const rejectInvite = async (req: Request, res: Response) => {
     const { loggedUserEmail, newUserEmail } = req.body;
     try {
-        const user = await ChatUser.findOne({ email: loggedUserEmail });
+        const user = await ChatUser.findOne({
+            email: loggedUserEmail,
+        }).populate("inviteList");
         if (!user) {
             return res.status(StatusCodes.NOT_FOUND).json({
                 status: Status.FAILED,
@@ -118,22 +128,27 @@ const rejectInvite = async(req: Request, res: Response) => {
         }
         user.inviteList.pull({ email: newUserEmail });
         await user.save();
-        
+
         return res
             .status(StatusCodes.OK)
-            .json({ status: Status.SUCCESS, message: "Invite removed successfully" });
-    } catch(err) {
+            .json({
+                status: Status.SUCCESS,
+                message: "Invite removed successfully",
+            });
+    } catch (err) {
         console.log(err);
         return res
             .status(StatusCodes.INTERNAL_SERVER_ERROR)
             .json({ status: Status.FAILED, message: "Something Went Wrong" });
     }
-}
+};
 
 const acceptInvite = async (req: Request, res: Response) => {
     const { loggedUserEmail, newUserEmail } = req.body;
     try {
-        const loggedUser = await ChatUser.findOne({ email: loggedUserEmail });
+        const loggedUser = await ChatUser.findOne({
+            email: loggedUserEmail,
+        }).populate("inviteList");
         if (!loggedUser) {
             return res.status(StatusCodes.NOT_FOUND).json({
                 status: Status.FAILED,
@@ -147,6 +162,7 @@ const acceptInvite = async (req: Request, res: Response) => {
                 message: "User not Exist",
             });
         }
+
         const participants = [
             {
                 username: loggedUser.username,
@@ -157,6 +173,7 @@ const acceptInvite = async (req: Request, res: Response) => {
                 profilePic: newUser.profilePic,
             },
         ];
+
         const newChat = new Chat({
             participants,
         });
@@ -164,6 +181,10 @@ const acceptInvite = async (req: Request, res: Response) => {
 
         loggedUser.chatList.push(newChat._id);
         newUser.chatList.push(newChat._id);
+        loggedUser.inviteList.pull({ email: newUserEmail });
+
+        loggedUser.friends.push(newUserEmail);
+        newUser.friends.push(loggedUserEmail);
 
         await loggedUser.save();
         await newUser.save();
@@ -200,4 +221,11 @@ const deleteChat = async (req: Request, res: Response) => {
     }
 };
 
-export { getAllChats, acceptInvite, deleteChat, createInvite, getAllInvites, rejectInvite };
+export {
+    getAllChats,
+    acceptInvite,
+    deleteChat,
+    createInvite,
+    getAllInvites,
+    rejectInvite,
+};
