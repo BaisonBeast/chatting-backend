@@ -4,6 +4,7 @@ import bcrypt from "bcrypt";
 import { StatusCodes } from "src/enums/statusCodes.enum";
 import { Status } from "src/enums/status.enum";
 import {
+    randomImage,
     randomNameGenerator,
     uploadImage,
 } from "src/services/ChatUserRouteService";
@@ -58,7 +59,11 @@ const registerUser = async (req: Request, res: Response) => {
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
         const newUserName: string = randomNameGenerator(username);
-        const profilePictureUrl: string = await uploadImage(file);
+        let profilePictureUrl: string;
+        if(file)
+            profilePictureUrl = await uploadImage(file);
+        else 
+            profilePictureUrl = randomImage();
 
         const newUser = new ChatUser({
             email: email,

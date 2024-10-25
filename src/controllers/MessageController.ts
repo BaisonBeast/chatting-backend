@@ -48,6 +48,11 @@ const createNewMessage = async (req: Request, res: Response) => {
         chat.messages.push(newMessage._id);
         await chat.save();
 
+        req.io?.to(chatId).emit('newMessage', {
+            chatId,
+            message: newMessage
+        });
+
         res.status(StatusCodes.OK).json({
             status: Status.SUCCESS,
             message: "Message Sent",

@@ -24,11 +24,18 @@ declare global {
         }
     }
 }
+app.use(
+    cors({
+        origin: "http://localhost:5173", // Allow your frontend's origin
+        credentials: true, // Allow credentials such as cookies
+    })
+);
 
 const io = new Server(server, {
     cors: {
-        origin: process.env.API_URL,
+        origin: "http://localhost:5173",
         methods: ["GET", "POST"],
+        credentials: true,
     },
 });
 
