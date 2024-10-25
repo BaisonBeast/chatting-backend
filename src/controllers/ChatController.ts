@@ -14,7 +14,6 @@ const getAllInvites = async (req: Request, res: Response) => {
                 message: "User not Exist with this email..",
             });
         }
-        console.log(user.inviteList);
         res.status(StatusCodes.OK).json({
             status: Status.SUCCESS,
             message: "All invitelist fetched",
@@ -103,6 +102,8 @@ const createInvite = async (req: Request, res: Response) => {
         user.inviteList.push(newInvite);
         await user.save();
 
+        req.io?.to(invitedEmail).emit("newInvite", newInvite);
+
         return res
             .status(StatusCodes.ACCEPTED)
             .json({ status: Status.SUCCESS, message: "Invite sent" });
@@ -165,10 +166,12 @@ const acceptInvite = async (req: Request, res: Response) => {
 
         const participants = [
             {
+                email: loggedUserEmail,
                 username: loggedUser.username,
                 profilePic: loggedUser.profilePic,
             },
             {
+                email: newUserEmail,
                 username: newUser.username,
                 profilePic: newUser.profilePic,
             },
@@ -188,6 +191,9 @@ const acceptInvite = async (req: Request, res: Response) => {
 
         await loggedUser.save();
         await newUser.save();
+
+        req.io?.to(loggedUserEmail).emit("createChat", newChat);
+        req.io?.to(newUserEmail).emit("createChat", newChat);
 
         res.status(StatusCodes.CREATED).json({
             status: Status.SUCCESS,

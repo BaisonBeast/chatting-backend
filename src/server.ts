@@ -49,16 +49,16 @@ app.use("/api/chat", ChatRoutes);
 app.use("/api/chatUser", ChatUserRoutes);
 
 io.on("connection", (socket) => {
-    console.log("a user connected");
-    socket.on("joinChat", (chatId) => {
-        socket.join(chatId);
-        console.log(`User joined chat: ${chatId}`);
+    socket.on("join", (email) => {
+        socket.join(email);
+        console.log(`User joined room: ${email}`);
     });
 
     socket.on("disconnect", () => {
         console.log("user disconnected");
     });
 });
+
 
 io.engine.on("connection_error", (err) => {
     console.log(err.req); // the request object

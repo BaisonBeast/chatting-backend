@@ -29,7 +29,7 @@ const getAllMessages = async (req: Request, res: Response) => {
 
 const createNewMessage = async (req: Request, res: Response) => {
     const { chatId } = req.params;
-    const { message, senderName } = req.body;
+    const { message, senderName, loggedInUser, otherSideUser } = req.body;
     try {
         const chat = await Chat.findOne({ _id: chatId });
         if (!chat) {
@@ -48,8 +48,10 @@ const createNewMessage = async (req: Request, res: Response) => {
         chat.messages.push(newMessage._id);
         await chat.save();
 
-        req.io?.to(chatId).emit('newMessage', {
-            chatId,
+        req.io?.to(loggedInUser).emit('newMessage', {
+            message: newMessage
+        });
+        req.io?.to(otherSideUser).emit('newMessage', {
             message: newMessage
         });
 
@@ -92,42 +94,5 @@ const deleteMessage = async (req: Request, res: Response) => {
             .json({ status: Status.FAILED, message: "Something Went Wrong" });
     }
 };
-
-// const createNewMessage = async (req: Request, res: Response) => {
-//     const { chatId, senderName, message } = req.body;
-//     try {
-//         // Find the chat by chatId
-//         const chat = await Chat.findOne({ chatId });
-//         if (!chat) {
-//             return res.status(404).json({ message: "Chat not found" });
-//         }
-
-//         // Create a new message
-//         const newMessage = new Message({
-//             senderName,
-//             message,
-//         });
-
-//         // Save the message to the database
-//         await newMessage.save();
-
-//         // Add the new message's ObjectId to the chat's messages array
-//         chat.messages.push(newMessage._id);
-//         chat.chatTime = new Date(); // Update chat's last activity time
-//         await chat.save();
-
-//         // Emit the new message to all connected clients in the chat room
-//         if (req.io) req.io.to(chatId).emit("receiveMessage", newMessage);
-
-//         // Send response to the client
-//         res.status(201).json({
-//             message: "Message sent successfully",
-//             newMessage,
-//         });
-//     } catch (err) {
-//         console.error("Error:", err);
-//         res.status(500).send("Server Error");
-//     }
-// };
 
 export { getAllMessages, deleteMessage, createNewMessage };
