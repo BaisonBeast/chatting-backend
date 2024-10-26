@@ -26,6 +26,6 @@ router.post("/rejectInvite", rejectInvite);
 router.post("/inviteUser", createInvite);
 
 // Delete a existing chat
-router.delete("/deleteChat", deleteChat);
+router.delete("/deleteChat/:chatId", deleteChat);
 
 export default router;

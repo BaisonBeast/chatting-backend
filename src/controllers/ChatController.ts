@@ -3,6 +3,7 @@ import { StatusCodes } from "src/enums/statusCodes.enum";
 import { Status } from "src/enums/status.enum";
 import ChatUser from "@models/ChatUserModel";
 import Chat from "../models/ChatModel";
+import { messaging } from "firebase-admin";
 
 const getAllInvites = async (req: Request, res: Response) => {
     const { email } = req.query;
@@ -130,12 +131,10 @@ const rejectInvite = async (req: Request, res: Response) => {
         user.inviteList.pull({ email: newUserEmail });
         await user.save();
 
-        return res
-            .status(StatusCodes.OK)
-            .json({
-                status: Status.SUCCESS,
-                message: "Invite removed successfully",
-            });
+        return res.status(StatusCodes.OK).json({
+            status: Status.SUCCESS,
+            message: "Invite removed successfully",
+        });
     } catch (err) {
         console.log(err);
         return res
@@ -192,8 +191,8 @@ const acceptInvite = async (req: Request, res: Response) => {
         await loggedUser.save();
         await newUser.save();
 
-        req.io?.to(loggedUserEmail).emit("createChat", newChat);
-        req.io?.to(newUserEmail).emit("createChat", newChat);
+        req.io?.to(loggedUserEmail).emit("createChat", {newChat, message: 'User added to your chatList'});
+        req.io?.to(newUserEmail).emit("createChat", {newChat, message: `${loggedUserEmail} has appected your invite`});
 
         res.status(StatusCodes.CREATED).json({
             status: Status.SUCCESS,
@@ -210,20 +209,60 @@ const acceptInvite = async (req: Request, res: Response) => {
 
 const deleteChat = async (req: Request, res: Response) => {
     const { chatId } = req.params;
+    const { loggedUserEmail, otherSideUserEmail } = req.body;
+
     try {
-        const chat = await Chat.findOneAndDelete({ chatId });
+        const loggedUser = await ChatUser.findOne({ email: loggedUserEmail });
+        const otherSideUser = await ChatUser.findOne({
+            email: otherSideUserEmail,
+        });
+
+        if (!loggedUser || !otherSideUser) {
+            return res
+                .status(404)
+                .json({ message: "One or both users not found" });
+        }
+
+        loggedUser.chatList = loggedUser.chatList.filter(
+            (id) => id.toString() !== chatId
+        );
+        otherSideUser.chatList = otherSideUser.chatList.filter(
+            (id) => id.toString() !== chatId
+        );
+
+        loggedUser.friends = loggedUser.friends.filter(
+            (email) => email !== otherSideUserEmail
+        );
+        otherSideUser.friends = otherSideUser.friends.filter(
+            (email) => email !== loggedUserEmail
+        );
+
+        await loggedUser.save();
+        await otherSideUser.save();
+
+        const chat = await Chat.findByIdAndDelete(chatId);
         if (!chat) {
             return res.status(404).json({ message: "Chat not found" });
         }
 
-        res.status(200).json({
-            message: "Chat and associated messages deleted successfully",
+        req.io?.to(loggedUserEmail).emit("removeChat", {
+            message: 'Removed chat',
+            chatId
+        });
+        req.io?.to(otherSideUserEmail).emit("removeChat", {
+            message: `${loggedUser.username} has removed the chat with you`,
+            chatId
+        });
+
+        res.status(StatusCodes.OK).json({
+            status: Status.SUCCESS,
+            message: "ChatList removed",
         });
     } catch (err) {
         console.log(err);
         return res
             .status(StatusCodes.INTERNAL_SERVER_ERROR)
-            .json({ status: Status.FAILED, message: "Something Went Wrong" });
+            .json({ status: "FAILED", message: "Something Went Wrong" });
     }
 };
 
