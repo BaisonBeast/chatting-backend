@@ -2,17 +2,22 @@ import mongoose from "mongoose";
 
 const MessageSchema = new mongoose.Schema(
     {
-        senderName: {
+        senderEmail: {
             type: String,
+            required: true,
+        },
+        messageType: {
+            type: String,
+            default: 'text',
             required: true,
         },
         message: {
             type: String,
-            required: true,
+            required: true
         },
         like: {
-            type: Number,
-            default: 0,
+            type: [String],
+            default: [],
         },
         isEdited: {
             type: Boolean,

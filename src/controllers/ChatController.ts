@@ -3,7 +3,6 @@ import { StatusCodes } from "src/enums/statusCodes.enum";
 import { Status } from "src/enums/status.enum";
 import ChatUser from "@models/ChatUserModel";
 import Chat from "../models/ChatModel";
-import { messaging } from "firebase-admin";
 
 const getAllInvites = async (req: Request, res: Response) => {
     const { email } = req.query;
