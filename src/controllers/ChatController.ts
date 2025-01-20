@@ -3,6 +3,10 @@ import { StatusCodes } from "src/enums/statusCodes.enum";
 import { Status } from "src/enums/status.enum";
 import ChatUser from "@models/ChatUserModel";
 import Chat from "../models/ChatModel";
+import dotenv from "dotenv";
+import {GoogleGenerativeAI} from "@google/generative-ai";
+
+dotenv.config();
 
 const getAllInvites = async (req: Request, res: Response) => {
     const { email } = req.query;
@@ -265,6 +269,71 @@ const deleteChat = async (req: Request, res: Response) => {
     }
 };
 
+const getSuggestion = async (req: Request, res: Response) => {
+    try {
+        const API_KEY = process.env.GEMNI_API_KEY;
+        const { textContent } = req.query;
+        const genAI = new GoogleGenerativeAI(API_KEY as string);
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+        const prompt = `You are building a chat application and want to provide 5 short, relevant autocomplete suggestions based on the user's input. The user has typed the following text: "${textContent}". Provide 5 brief and relevant autocomplete suggestions in the following format:
+
+Suggestion 1, Suggestion 2, Suggestion 3, Suggestion 4, Suggestion 5
+
+Ensure that the suggestions are short and relevant. Do not include any other text or explanation, just the comma-separated suggestions.`;
+
+
+        const result = await model.generateContent(prompt);
+
+        // Check if result, response, and candidates are defined
+        if (result?.response?.candidates?.[0]?.content?.parts?.[0]?.text) {
+            res.status(200).json(result.response.candidates[0].content.parts[0].text);
+        } else {
+            res.status(500).json({ status: "FAILED", message: "No suggestions returned from API" });
+        }
+
+    } catch (error) {
+        console.log(error);
+        return res
+            .status(StatusCodes.INTERNAL_SERVER_ERROR)
+            .json({ status: "FAILED", message: "Something Went Wrong" });
+    }
+}
+
+const getReplySuggestions = async (req: Request, res: Response) => {
+    try {
+        const API_KEY = process.env.GEMNI_API_KEY;
+        const { textContent } = req.query; // Extract textContent from query
+        const genAI = new GoogleGenerativeAI(API_KEY as string);
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+        // Create a prompt to generate 5 possible replies based on the user's input
+        const prompt = `You are building a chat application and want to provide 5 short, concise reply suggestions based on the user's input. The user has typed the following text: "${textContent}". Provide 5 brief and relevant reply suggestions in the following format:
+
+Reply 1, Reply 2, Reply 3, Reply 4, Reply 5
+
+Ensure that the replies are short and to the point. Do not include any other text or explanation, just the comma-separated suggestions.`;
+
+
+        const result = await model.generateContent(prompt);
+
+        // Check if the response has valid candidates and return the first set of reply suggestions
+        if (result?.response?.candidates?.[0]?.content?.parts?.[0]?.text) {
+            res.status(200).json(result.response.candidates[0].content.parts[0].text);
+        } else {
+            res.status(500).json({ status: "FAILED", message: "No reply suggestions returned from API" });
+        }
+
+    } catch (error) {
+        console.log(error);
+        return res
+            .status(StatusCodes.INTERNAL_SERVER_ERROR)
+            .json({ status: "FAILED", message: "Something Went Wrong" });
+    }
+}
+
+
+
 export {
     getAllChats,
     acceptInvite,
@@ -272,4 +341,6 @@ export {
     createInvite,
     getAllInvites,
     rejectInvite,
+    getSuggestion,
+    getReplySuggestions
 };
