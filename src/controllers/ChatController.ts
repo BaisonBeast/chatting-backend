@@ -44,6 +44,7 @@ const getAllChats = async (req: Request, res: Response) => {
                 message: "User not Exist with this email..",
             });
         }
+
         res.status(StatusCodes.OK).json({
             status: Status.SUCCESS,
             message: "All chatList fetched",

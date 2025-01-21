@@ -4,6 +4,7 @@ import {
     deleteMessage,
     createNewMessage,
     updateMessage,
+    likeMessage
 } from "../controllers/MessageController";
 import multer from "multer";
 
@@ -19,6 +20,9 @@ router.delete("/delete/:messageId", deleteMessage);
 
 //Edit message
 router.put("/update/:messageId", updateMessage);
+
+//Like message
+router.post('/likeMessage', likeMessage);
 
 // create a new message
 router.post(

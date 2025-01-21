@@ -3,9 +3,7 @@ import Chat from "../models/ChatModel.js";
 import Message from "../models/MessageModel";
 import { StatusCodes } from "src/enums/statusCodes.enum.js";
 import { Status } from "src/enums/status.enum.js";
-import {
-    uploadFile
-} from '../services/messageService.js';
+import { uploadFile } from "../services/messageService.js";
 
 const getAllMessages = async (req: Request, res: Response) => {
     const { chatId } = req.params;
@@ -33,7 +31,8 @@ const getAllMessages = async (req: Request, res: Response) => {
 const createNewMessage = async (req: Request, res: Response) => {
     const { chatId } = req.params;
     const { message, messageType, loggedInUser, otherSideUser } = req.body;
-    const file = req.file as Express.Multer.File ?? null;
+
+    const file = (req.file as Express.Multer.File) ?? null;
     try {
         const chat = await Chat.findOne({ _id: chatId });
         if (!chat) {
@@ -44,14 +43,23 @@ const createNewMessage = async (req: Request, res: Response) => {
         }
 
         let messageToBeSaved;
-        if(file)
-            messageToBeSaved = await uploadFile(file);
-        else messageToBeSaved = message;
+        if (file) {
+            try {
+                messageToBeSaved = await uploadFile(file);
+            } catch (error) {
+                return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+                    status: Status.FAILED,
+                    message: "File upload failed",
+                });
+            }
+        } else {
+            messageToBeSaved = message;
+        }
 
         const newMessage = new Message({
             senderEmail: loggedInUser,
             message: messageToBeSaved,
-            messageType
+            messageType,
         });
 
         await newMessage.save();
@@ -59,12 +67,10 @@ const createNewMessage = async (req: Request, res: Response) => {
         chat.messages.push(newMessage._id);
         await chat.save();
 
-        console.log(newMessage)
-
-        req.io?.to(loggedInUser).emit("newMessage", {
+        req.io?.to(loggedInUser.trim().toLowerCase()).emit("newMessage", {
             message: newMessage,
         });
-        req.io?.to(otherSideUser).emit("newMessage", {
+        req.io?.to(otherSideUser.trim().toLowerCase()).emit("newMessage", {
             message: newMessage,
         });
 
@@ -83,7 +89,7 @@ const createNewMessage = async (req: Request, res: Response) => {
 
 const deleteMessage = async (req: Request, res: Response) => {
     const { messageId } = req.params;
-    const {loggedUserEmail, otherSideUserEmail} = req.body;
+    const { loggedUserEmail, otherSideUserEmail } = req.body;
 
     try {
         const message = await Message.findOne({ _id: messageId });
@@ -100,10 +106,10 @@ const deleteMessage = async (req: Request, res: Response) => {
         await message.save();
 
         req.io?.to(loggedUserEmail).emit("deleteMessage", {
-            messageId
+            messageId,
         });
         req.io?.to(otherSideUserEmail).emit("deleteMessage", {
-            messageId
+            messageId,
         });
 
         res.status(StatusCodes.OK).json({
@@ -119,8 +125,7 @@ const deleteMessage = async (req: Request, res: Response) => {
 };
 
 const updateMessage = async (req: Request, res: Response) => {
-    const { messageId } = req.params;
-    const { newMessage } = req.params;
+    const {messageId, loggedUserEmail, otherSideUserEmail, newMessage} = req.body;
     try {
         const message = await Message.findOne({ _id: messageId });
         if (!message) {
@@ -135,9 +140,13 @@ const updateMessage = async (req: Request, res: Response) => {
 
         await message.save();
 
-        res.status(StatusCodes.OK).json({
-            status: Status.SUCCESS,
-            message: "Message successfully updated..",
+        req.io?.to(loggedUserEmail).emit("Message Edited", {
+            messageId,
+            newMessage
+        });
+        req.io?.to(otherSideUserEmail).emit("Message Edited", {
+            messageId,
+            newMessage
         });
     } catch (err: any) {
         console.log(err);
@@ -147,4 +156,36 @@ const updateMessage = async (req: Request, res: Response) => {
     }
 };
 
-export { getAllMessages, deleteMessage, createNewMessage, updateMessage };
+const likeMessage = async(req: Request, res: Response) => {
+    try {
+        const { messageId, likeGivenUserEmail, otherSideUserEmail } = req.body;
+        const message = await Message.findById(messageId);
+        if(!message) {
+            return res.status(StatusCodes.NOT_FOUND).json({
+                status: Status.FAILED,
+                message: "Message not found",
+            });
+        }
+        if(message.like.includes(likeGivenUserEmail)) {
+            return res.status(StatusCodes.CONFLICT).json({
+                status: Status.FAILED,
+                message: "Cannot like two times",
+            });
+        }
+        message.like.push(likeGivenUserEmail);
+        await message.save();
+        req.io?.to(likeGivenUserEmail).emit("Liked the message", {
+            messageId,
+        });
+        req.io?.to(otherSideUserEmail).emit("Like received on message", {
+            messageId,
+        });
+    } catch(error) {
+        console.log(error);
+        return res
+            .status(StatusCodes.INTERNAL_SERVER_ERROR)
+            .json({ status: Status.FAILED, message: "Something Went Wrong" });
+    }
+}
+
+export { getAllMessages, deleteMessage, createNewMessage, updateMessage, likeMessage };
