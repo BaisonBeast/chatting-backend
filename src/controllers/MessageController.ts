@@ -159,7 +159,7 @@ const updateMessage = async (req: Request, res: Response) => {
 const likeMessage = async(req: Request, res: Response) => {
     try {
         const { messageId, likeGivenUserEmail, otherSideUserEmail } = req.body;
-        const message = await Message.findById(messageId);
+        const message = await Message.findOne({_id: messageId});
         if(!message) {
             return res.status(StatusCodes.NOT_FOUND).json({
                 status: Status.FAILED,
@@ -174,11 +174,13 @@ const likeMessage = async(req: Request, res: Response) => {
         }
         message.like.push(likeGivenUserEmail);
         await message.save();
-        req.io?.to(likeGivenUserEmail).emit("Liked the message", {
+        req.io?.to(likeGivenUserEmail).emit("likemessage", {
             messageId,
+            email: likeGivenUserEmail,
         });
-        req.io?.to(otherSideUserEmail).emit("Like received on message", {
+        req.io?.to(otherSideUserEmail).emit("likemessage", {
             messageId,
+            email: likeGivenUserEmail,
         });
     } catch(error) {
         console.log(error);
