@@ -31,6 +31,7 @@ const getAllMessages = async (req: Request, res: Response) => {
 const createNewMessage = async (req: Request, res: Response) => {
     const { chatId } = req.params;
     const { message, messageType, loggedInUser, otherSideUser } = req.body;
+    console.log(req.body);
 
     const file = (req.file as Express.Multer.File) ?? null;
     try {
@@ -67,10 +68,10 @@ const createNewMessage = async (req: Request, res: Response) => {
         chat.messages.push(newMessage._id);
         await chat.save();
 
-        req.io?.to(loggedInUser.trim().toLowerCase()).emit("newMessage", {
+        req.io?.to(loggedInUser).emit("newMessage", {
             message: newMessage,
         });
-        req.io?.to(otherSideUser.trim().toLowerCase()).emit("newMessage", {
+        req.io?.to(otherSideUser).emit("newMessage", {
             message: newMessage,
         });
 
@@ -91,6 +92,9 @@ const deleteMessage = async (req: Request, res: Response) => {
     const { messageId } = req.params;
     const { loggedUserEmail, otherSideUserEmail } = req.body;
 
+    console.log(req.params);
+    console.log(req.body);
+
     try {
         const message = await Message.findOne({ _id: messageId });
         if (!message) {
@@ -100,7 +104,7 @@ const deleteMessage = async (req: Request, res: Response) => {
             });
         }
 
-        message.message = "";
+        message.message = "deleted";
         message.isDeleted = true;
 
         await message.save();
@@ -112,10 +116,6 @@ const deleteMessage = async (req: Request, res: Response) => {
             messageId,
         });
 
-        res.status(StatusCodes.OK).json({
-            status: Status.SUCCESS,
-            message: "Message deleted successfully",
-        });
     } catch (err) {
         console.log(err);
         return res

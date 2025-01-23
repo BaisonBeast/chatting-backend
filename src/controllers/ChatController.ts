@@ -304,11 +304,10 @@ Ensure that the suggestions are short and relevant. Do not include any other tex
 const getReplySuggestions = async (req: Request, res: Response) => {
     try {
         const API_KEY = process.env.GEMNI_API_KEY;
-        const { textContent } = req.query; // Extract textContent from query
+        const { textContent } = req.query; 
         const genAI = new GoogleGenerativeAI(API_KEY as string);
         const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-        // Create a prompt to generate 5 possible replies based on the user's input
         const prompt = `You are building a chat application and want to provide 5 short, concise reply suggestions based on the user's input. The user has typed the following text: "${textContent}". Provide 5 brief and relevant reply suggestions in the following format:
 
 Reply 1, Reply 2, Reply 3, Reply 4, Reply 5
@@ -318,7 +317,6 @@ Ensure that the replies are short and to the point. Do not include any other tex
 
         const result = await model.generateContent(prompt);
 
-        // Check if the response has valid candidates and return the first set of reply suggestions
         if (result?.response?.candidates?.[0]?.content?.parts?.[0]?.text) {
             res.status(200).json(result.response.candidates[0].content.parts[0].text);
         } else {
