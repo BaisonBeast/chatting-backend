@@ -4,7 +4,7 @@ import { Status } from "src/enums/status.enum";
 import ChatUser from "@models/ChatUserModel";
 import Chat from "../models/ChatModel";
 import dotenv from "dotenv";
-import {GoogleGenerativeAI} from "@google/generative-ai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 dotenv.config();
 
@@ -195,8 +195,18 @@ const acceptInvite = async (req: Request, res: Response) => {
         await loggedUser.save();
         await newUser.save();
 
-        req.io?.to(loggedUserEmail).emit("createChat", {newChat, message: 'User added to your chatList'});
-        req.io?.to(newUserEmail).emit("createChat", {newChat, message: `${loggedUserEmail} has appected your invite`});
+        req.io
+            ?.to(loggedUserEmail)
+            .emit("createChat", {
+                newChat,
+                message: "User added to your chatList",
+            });
+        req.io
+            ?.to(newUserEmail)
+            .emit("createChat", {
+                newChat,
+                message: `${loggedUserEmail} has appected your invite`,
+            });
 
         res.status(StatusCodes.CREATED).json({
             status: Status.SUCCESS,
@@ -255,7 +265,7 @@ const deleteChat = async (req: Request, res: Response) => {
         });
         req.io?.to(otherSideUserEmail).emit("removeChat", {
             message: `${loggedUser.username} has removed the chat with you`,
-            chatId
+            chatId,
         });
 
         res.status(StatusCodes.OK).json({
@@ -277,34 +287,38 @@ const getSuggestion = async (req: Request, res: Response) => {
         const genAI = new GoogleGenerativeAI(API_KEY as string);
         const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-        const prompt = `You are building a chat application and want to provide 5 short, relevant autocomplete suggestions based on the user's input. The user has typed the following text: "${textContent}". Provide 5 brief and relevant autocomplete suggestions in the following format:
+        const prompt = `Based on the given input ${textContent}, predict the next word the user is likely to type. Provide exactly 5 possible word suggestions in a comma-separated format.
 
-Suggestion 1, Suggestion 2, Suggestion 3, Suggestion 4, Suggestion 5
+Format:
+Suggestion1, Suggestion2, Suggestion3, Suggestion4, Suggestion5
 
-Ensure that the suggestions are short and relevant. Do not include any other text or explanation, just the comma-separated suggestions.`;
-
+Ensure the suggestions are contextually relevant and likely to follow naturally. Do not include explanations or the user's input—only the five words.`;
 
         const result = await model.generateContent(prompt);
 
         // Check if result, response, and candidates are defined
         if (result?.response?.candidates?.[0]?.content?.parts?.[0]?.text) {
-            res.status(200).json(result.response.candidates[0].content.parts[0].text);
+            res.status(200).json(
+                result.response.candidates[0].content.parts[0].text
+            );
         } else {
-            res.status(500).json({ status: "FAILED", message: "No suggestions returned from API" });
+            res.status(500).json({
+                status: "FAILED",
+                message: "No suggestions returned from API",
+            });
         }
-
     } catch (error) {
         console.log(error);
         return res
             .status(StatusCodes.INTERNAL_SERVER_ERROR)
             .json({ status: "FAILED", message: "Something Went Wrong" });
     }
-}
+};
 
 const getReplySuggestions = async (req: Request, res: Response) => {
     try {
         const API_KEY = process.env.GEMNI_API_KEY;
-        const { textContent } = req.query; 
+        const { textContent } = req.query;
         const genAI = new GoogleGenerativeAI(API_KEY as string);
         const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
@@ -314,24 +328,25 @@ Reply 1, Reply 2, Reply 3, Reply 4, Reply 5
 
 Ensure that the replies are short and to the point. Do not include any other text or explanation, just the comma-separated suggestions.`;
 
-
         const result = await model.generateContent(prompt);
 
         if (result?.response?.candidates?.[0]?.content?.parts?.[0]?.text) {
-            res.status(200).json(result.response.candidates[0].content.parts[0].text);
+            res.status(200).json(
+                result.response.candidates[0].content.parts[0].text
+            );
         } else {
-            res.status(500).json({ status: "FAILED", message: "No reply suggestions returned from API" });
+            res.status(500).json({
+                status: "FAILED",
+                message: "No reply suggestions returned from API",
+            });
         }
-
     } catch (error) {
         console.log(error);
         return res
             .status(StatusCodes.INTERNAL_SERVER_ERROR)
             .json({ status: "FAILED", message: "Something Went Wrong" });
     }
-}
-
-
+};
 
 export {
     getAllChats,
@@ -341,5 +356,5 @@ export {
     getAllInvites,
     rejectInvite,
     getSuggestion,
-    getReplySuggestions
+    getReplySuggestions,
 };
