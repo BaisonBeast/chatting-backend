@@ -1,5 +1,5 @@
 import connectDB from "./config/db";
-import express from "express";
+import express, { NextFunction, Request, Response } from "express";
 import dotenv from "dotenv";
 import http from "http";
 import { Server } from "socket.io";
@@ -7,6 +7,8 @@ import cors from "cors";
 import MessageRoutes from "./routes/MessageRoute";
 import ChatRoutes from "./routes/ChatRoute";
 import ChatUserRoutes from "./routes/ChatUserRoute";
+import logger from "./utils/logger";
+import chalk from "chalk";
 
 dotenv.config();
 connectDB();
@@ -14,8 +16,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const PORT = process.env.PORT;
-const server = http.createServer(app);
+export const server = http.createServer(app);
 const API_URL = process.env.API_URL;
 
 declare global {
@@ -25,6 +26,7 @@ declare global {
         }
     }
 }
+
 app.use(
     cors({
         origin: API_URL,
@@ -41,8 +43,14 @@ const io = new Server(server, {
 });
 
 app.use((req, res, next) => {
+    logger.info(`${req.method} ${req.url}`);
     req.io = io;
     next();
+});
+
+app.use((err: any, req: Request, res: Response, next: NextFunction) => {
+    logger.error(`Error: ${err.message}`);
+    res.status(500).json({ message: "Internal Server Error" });
 });
 
 app.use("/api/messages", MessageRoutes);
@@ -50,28 +58,23 @@ app.use("/api/chat", ChatRoutes);
 app.use("/api/chatUser", ChatUserRoutes);
 
 io.on("connection", (socket) => {
+    logger.info(chalk.green("New WebSocket connection"));
+
     socket.on("join", (email) => {
         socket.join(email);
-        console.log(`User joined room: ${email}`);
+        logger.info(chalk.blue(`User joined room: ${email}`));
     });
 
     socket.on("disconnect", () => {
-        console.log("user disconnected");
+        logger.info(chalk.yellow("User disconnected"));
     });
 });
 
-
 io.engine.on("connection_error", (err) => {
-    console.log(err.req); // the request object
-    console.log(err.code); // the error code, for example 1
-    console.log(err.message); // the error message, for example "Session ID unknown"
-    console.log(err.context); // some additional error context
+    logger.error(chalk.red(`Socket.io Error: ${err.message}`));
 });
 
-app.get("/", function (req, res) {
-    res.send("Hello");
-});
-
-server.listen(PORT, () => {
-    console.log(`Server Running on port ${PORT}`);
+app.get("/", (req, res) => {
+    logger.info("Health check accessed");
+    res.send("Hello new friend!");
 });
