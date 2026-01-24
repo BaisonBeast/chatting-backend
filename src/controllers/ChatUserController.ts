@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import jwt from "jsonwebtoken";
 import ChatUser from "../models/ChatUserModel";
 import bcrypt from "bcrypt";
 import { StatusCodes } from "src/enums/statusCodes.enum";
@@ -25,12 +26,15 @@ const loginUser = async (req: Request, res: Response) => {
                     status: Status.FAILED,
                     message: "Password does not match!!",
                 });
+            const token = jwt.sign({ id: user._id, email: user.email }, process.env.JWT_SECRET || "fallbacksecret", { expiresIn: "1d" });
+
             const dataToSend = {
                 id: user._id,
                 email: user.email,
                 username: user.username,
                 profilePic: user.profilePic,
-                background: user.background
+                background: user.background,
+                token
             };
             return res.status(StatusCodes.ACCEPTED).json({
                 status: Status.SUCCESS,
@@ -60,9 +64,9 @@ const registerUser = async (req: Request, res: Response) => {
         const hashedPassword = await bcrypt.hash(password, salt);
         const newUserName: string = randomNameGenerator(username);
         let profilePictureUrl: string;
-        if(file)
+        if (file)
             profilePictureUrl = await uploadImage(file);
-        else 
+        else
             profilePictureUrl = randomImage();
 
         const newUser = new ChatUser({
@@ -74,18 +78,21 @@ const registerUser = async (req: Request, res: Response) => {
 
         await newUser.save();
 
+        const token = jwt.sign({ id: newUser._id, email: newUser.email }, process.env.JWT_SECRET || "fallbacksecret", { expiresIn: "1d" });
+
         const dataToSend = {
             id: newUser._id,
             email: newUser.email,
             username: newUser.username,
             profilePic: newUser.profilePic,
-            background: newUser.background
+            background: newUser.background,
+            token
         };
 
         return res
             .status(StatusCodes.CREATED)
-            .json({ 
-                status: Status.SUCCESS, 
+            .json({
+                status: Status.SUCCESS,
                 data: dataToSend,
                 message: "User Successfully Registerd!!",
             });
@@ -97,8 +104,8 @@ const registerUser = async (req: Request, res: Response) => {
     }
 };
 
-const updateUser = async(req: Request, res: Response) => {
-    const { username, background, email} = req.body;
+const updateUser = async (req: Request, res: Response) => {
+    const { username, background, email } = req.body;
 
     const file = req.file as Express.Multer.File ?? null;
     try {
@@ -109,13 +116,13 @@ const updateUser = async(req: Request, res: Response) => {
                 message: "User not found with this email",
             });
         }
-        if(file) {
+        if (file) {
             const profilePictureUrl: string = await uploadImage(file);
             user.profilePic = profilePictureUrl;
         }
 
-        if(username !== '' && user.username !== username) user.username = username;
-        if(user.background != background) user.background = background;
+        if (username !== '' && user.username !== username) user.username = username;
+        if (user.background != background) user.background = background;
 
         await user.save();
 
@@ -128,14 +135,14 @@ const updateUser = async(req: Request, res: Response) => {
         };
 
         return res
-        .status(StatusCodes.OK)
-        .json({ 
-            status: Status.SUCCESS, 
-            data: dataToSend,
-            message: "User Successfully Updated!!",
-        });
+            .status(StatusCodes.OK)
+            .json({
+                status: Status.SUCCESS,
+                data: dataToSend,
+                message: "User Successfully Updated!!",
+            });
 
-    } catch(err) {
+    } catch (err) {
         console.log(err);
         return res
             .status(StatusCodes.INTERNAL_SERVER_ERROR)

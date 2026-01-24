@@ -1,4 +1,5 @@
 import express from "express";
+import { authMiddleware } from "../middleware/authMiddleware";
 import {
     loginUser,
     registerUser,
@@ -6,7 +7,10 @@ import {
 } from "../controllers/ChatUserController";
 import multer from "multer";
 
-const upload = multer({ storage: multer.memoryStorage() });
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 5 * 1024 * 1024 }
+});
 
 const router = express.Router();
 
@@ -26,6 +30,7 @@ router.post(
 
 router.post(
     "/update",
+    authMiddleware,
     upload.single("profilePic"),
     (req, res, next) => {
         if (!req.file) {

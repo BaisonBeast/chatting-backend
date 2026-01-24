@@ -30,11 +30,13 @@ const getAllMessages = async (req: Request, res: Response) => {
 
 const createNewMessage = async (req: Request, res: Response) => {
     const { chatId } = req.params;
-    const { message, messageType, loggedInUser, otherSideUser } = req.body;
-    console.log(req.body);
-
-    const file = (req.file as Express.Multer.File) ?? null;
     try {
+        const { message, messageType, otherSideUser } = req.body;
+        const loggedInUser = req.user.email;
+        console.log(req.body);
+
+        const file = (req.file as Express.Multer.File) ?? null;
+
         const chat = await Chat.findOne({ _id: chatId });
         if (!chat) {
             return res.status(StatusCodes.NOT_FOUND).json({
@@ -90,12 +92,12 @@ const createNewMessage = async (req: Request, res: Response) => {
 
 const deleteMessage = async (req: Request, res: Response) => {
     const { messageId } = req.params;
-    const { loggedUserEmail, otherSideUserEmail } = req.body;
-
-    console.log(req.params);
-    console.log(req.body);
-
     try {
+        const { otherSideUserEmail } = req.body;
+        const loggedUserEmail = req.user.email;
+
+        console.log(req.params);
+        console.log(req.body);
         const message = await Message.findOne({ _id: messageId });
         if (!message) {
             return res.status(StatusCodes.NOT_FOUND).json({
@@ -125,8 +127,9 @@ const deleteMessage = async (req: Request, res: Response) => {
 };
 
 const updateMessage = async (req: Request, res: Response) => {
-    const {messageId, loggedUserEmail, otherSideUserEmail, newMessage} = req.body;
     try {
+        const { messageId, otherSideUserEmail, newMessage } = req.body;
+        const loggedUserEmail = req.user.email;
         const message = await Message.findOne({ _id: messageId });
         if (!message) {
             return res.status(StatusCodes.NOT_FOUND).json({
@@ -156,17 +159,18 @@ const updateMessage = async (req: Request, res: Response) => {
     }
 };
 
-const likeMessage = async(req: Request, res: Response) => {
+const likeMessage = async (req: Request, res: Response) => {
     try {
-        const { messageId, likeGivenUserEmail, otherSideUserEmail } = req.body;
-        const message = await Message.findOne({_id: messageId});
-        if(!message) {
+        const { messageId, otherSideUserEmail } = req.body;
+        const likeGivenUserEmail = req.user.email;
+        const message = await Message.findOne({ _id: messageId });
+        if (!message) {
             return res.status(StatusCodes.NOT_FOUND).json({
                 status: Status.FAILED,
                 message: "Message not found",
             });
         }
-        if(message.like.includes(likeGivenUserEmail)) {
+        if (message.like.includes(likeGivenUserEmail)) {
             return res.status(StatusCodes.CONFLICT).json({
                 status: Status.FAILED,
                 message: "Cannot like two times",
@@ -182,7 +186,7 @@ const likeMessage = async(req: Request, res: Response) => {
             messageId,
             email: likeGivenUserEmail,
         });
-    } catch(error) {
+    } catch (error) {
         console.log(error);
         return res
             .status(StatusCodes.INTERNAL_SERVER_ERROR)

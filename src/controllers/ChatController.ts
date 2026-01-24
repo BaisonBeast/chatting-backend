@@ -9,8 +9,8 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 dotenv.config();
 
 const getAllInvites = async (req: Request, res: Response) => {
-    const { email } = req.query;
     try {
+        const email = req.user.email;
         const user = await ChatUser.findOne({ email });
         if (!user) {
             return res.status(StatusCodes.NOT_FOUND).json({
@@ -32,8 +32,8 @@ const getAllInvites = async (req: Request, res: Response) => {
 };
 
 const getAllChats = async (req: Request, res: Response) => {
-    const { email } = req.query;
     try {
+        const email = req.user.email;
         const user = await ChatUser.findOne({ email }).populate({
             path: "chatList",
             select: "-messages",
@@ -59,9 +59,10 @@ const getAllChats = async (req: Request, res: Response) => {
 };
 
 const createInvite = async (req: Request, res: Response) => {
-    const { invitedEmail, inviteeEmail, inviteeUsername, inviteeProfilePic } =
-        req.body;
     try {
+        const invitedEmail = req.user.email;
+        const { inviteeEmail, inviteeUsername, inviteeProfilePic } =
+            req.body;
         const user = await ChatUser.findOne({ email: invitedEmail }).populate(
             "inviteList"
         );
@@ -121,8 +122,9 @@ const createInvite = async (req: Request, res: Response) => {
 };
 
 const rejectInvite = async (req: Request, res: Response) => {
-    const { loggedUserEmail, newUserEmail } = req.body;
     try {
+        const loggedUserEmail = req.user.email;
+        const { newUserEmail } = req.body;
         const user = await ChatUser.findOne({
             email: loggedUserEmail,
         }).populate("inviteList");
@@ -148,8 +150,9 @@ const rejectInvite = async (req: Request, res: Response) => {
 };
 
 const acceptInvite = async (req: Request, res: Response) => {
-    const { loggedUserEmail, newUserEmail } = req.body;
     try {
+        const loggedUserEmail = req.user.email;
+        const { newUserEmail } = req.body;
         const loggedUser = await ChatUser.findOne({
             email: loggedUserEmail,
         }).populate("inviteList");
@@ -223,9 +226,10 @@ const acceptInvite = async (req: Request, res: Response) => {
 
 const deleteChat = async (req: Request, res: Response) => {
     const { chatId } = req.params;
-    const { loggedUserEmail, otherSideUserEmail } = req.body;
 
     try {
+        const loggedUserEmail = req.user.email;
+        const { otherSideUserEmail } = req.body;
         const loggedUser = await ChatUser.findOne({ email: loggedUserEmail });
         const otherSideUser = await ChatUser.findOne({
             email: otherSideUserEmail,
@@ -282,10 +286,11 @@ const deleteChat = async (req: Request, res: Response) => {
 
 const getSuggestion = async (req: Request, res: Response) => {
     try {
-        const API_KEY = process.env.GEMNI_API_KEY;
+        const API_KEY = process.env.GEMINI_API_KEY;
+
         const { textContent } = req.query;
         const genAI = new GoogleGenerativeAI(API_KEY as string);
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
 
         const prompt = `Based on the given input ${textContent}, predict the next word the user is likely to type. Provide exactly 5 possible word suggestions in a comma-separated format.
 
@@ -317,10 +322,10 @@ Ensure the suggestions are contextually relevant and likely to follow naturally.
 
 const getReplySuggestions = async (req: Request, res: Response) => {
     try {
-        const API_KEY = process.env.GEMNI_API_KEY;
+        const API_KEY = process.env.GEMINI_API_KEY;
         const { textContent } = req.query;
         const genAI = new GoogleGenerativeAI(API_KEY as string);
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
 
         const prompt = `You are building a chat application and want to provide 5 short, concise reply suggestions based on the user's input. The user has typed the following text: "${textContent}". Provide 5 brief and relevant reply suggestions in the following format:
 

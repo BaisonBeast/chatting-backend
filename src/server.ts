@@ -9,6 +9,7 @@ import ChatRoutes from "./routes/ChatRoute";
 import ChatUserRoutes from "./routes/ChatUserRoute";
 import logger from "./utils/logger";
 import chalk from "chalk";
+import { authMiddleware } from "./middleware/authMiddleware";
 
 dotenv.config();
 connectDB();
@@ -23,6 +24,7 @@ declare global {
     namespace Express {
         interface Request {
             io?: Server;
+            user?: any;
         }
     }
 }
@@ -53,8 +55,8 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
     res.status(500).json({ message: "Internal Server Error" });
 });
 
-app.use("/api/messages", MessageRoutes);
-app.use("/api/chat", ChatRoutes);
+app.use("/api/messages", authMiddleware, MessageRoutes);
+app.use("/api/chat", authMiddleware, ChatRoutes);
 app.use("/api/chatUser", ChatUserRoutes);
 
 io.on("connection", (socket) => {
