@@ -59,16 +59,34 @@ app.use("/api/messages", authMiddleware, MessageRoutes);
 app.use("/api/chat", authMiddleware, ChatRoutes);
 app.use("/api/chatUser", ChatUserRoutes);
 
+import { setUserOnline, setUserOffline, getOnlineUsers } from "./config/redis";
+
+// ... imports
+
 io.on("connection", (socket) => {
     logger.info(chalk.green("New WebSocket connection"));
 
-    socket.on("join", (email) => {
+    socket.on("join", async (email) => {
         socket.join(email);
         logger.info(chalk.blue(`User joined room: ${email}`));
+        // Initial online status set
+        await setUserOnline(email, socket.id);
     });
 
-    socket.on("disconnect", () => {
+    socket.on("heartbeat", async (email) => {
+        // Refresh TTL
+        await setUserOnline(email, socket.id);
+    });
+
+    socket.on("checkOnlineStatus", async (emails: string[]) => {
+        const onlineUsers = await getOnlineUsers(emails);
+        socket.emit("onlineStatusUpdate", onlineUsers);
+    });
+
+    socket.on("disconnect", async () => {
         logger.info(chalk.yellow("User disconnected"));
+        // Optionally remove immediately, or let heartbeat expire
+        // await setUserOffline(email); // Requires tracking email on socket object
     });
 });
 

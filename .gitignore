@@ -109,3 +109,6 @@ public
 /dist
 
 firebase-secrets.json
+
+.dockerignore
+docker-compose.yml
