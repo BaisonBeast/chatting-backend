@@ -4,6 +4,7 @@ import Message from "../models/MessageModel";
 import { StatusCodes } from "src/enums/statusCodes.enum.js";
 import { Status } from "src/enums/status.enum.js";
 import { uploadFile } from "../services/messageService.js";
+import { MESSAGES, SOCKET_EVENTS } from "../utils/constants";
 
 const getAllMessages = async (req: Request, res: Response) => {
     const { chatId } = req.params;
@@ -12,19 +13,19 @@ const getAllMessages = async (req: Request, res: Response) => {
         if (!chat) {
             return res.status(StatusCodes.NOT_FOUND).json({
                 status: Status.FAILED,
-                message: "User not Exist",
+                message: MESSAGES.USER_NOT_EXIST,
             });
         }
         res.status(StatusCodes.OK).json({
             status: Status.SUCCESS,
-            message: "All messages fetched",
+            message: MESSAGES.ALL_MESSAGES_FETCHED,
             data: chat.messages,
         });
     } catch (err) {
         console.log(err);
         return res
             .status(StatusCodes.INTERNAL_SERVER_ERROR)
-            .json({ status: Status.FAILED, message: "Something Went Wrong" });
+            .json({ status: Status.FAILED, message: MESSAGES.INTERNAL_SERVER_ERROR });
     }
 };
 
@@ -41,7 +42,7 @@ const createNewMessage = async (req: Request, res: Response) => {
         if (!chat) {
             return res.status(StatusCodes.NOT_FOUND).json({
                 status: Status.FAILED,
-                message: "User not Exist",
+                message: MESSAGES.USER_NOT_EXIST,
             });
         }
 
@@ -52,7 +53,7 @@ const createNewMessage = async (req: Request, res: Response) => {
             } catch (error) {
                 return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
                     status: Status.FAILED,
-                    message: "File upload failed",
+                    message: MESSAGES.FILE_UPLOAD_FAILED,
                 });
             }
         } else {
@@ -70,23 +71,23 @@ const createNewMessage = async (req: Request, res: Response) => {
         chat.messages.push(newMessage._id);
         await chat.save();
 
-        req.io?.to(loggedInUser).emit("newMessage", {
+        req.io?.to(loggedInUser).emit(SOCKET_EVENTS.NEW_MESSAGE, {
             message: newMessage,
         });
-        req.io?.to(otherSideUser).emit("newMessage", {
+        req.io?.to(otherSideUser).emit(SOCKET_EVENTS.NEW_MESSAGE, {
             message: newMessage,
         });
 
         res.status(StatusCodes.OK).json({
             status: Status.SUCCESS,
-            message: "Message Sent",
+            message: MESSAGES.MESSAGE_SENT,
             data: newMessage,
         });
     } catch (err) {
         console.log(err);
         return res
             .status(StatusCodes.INTERNAL_SERVER_ERROR)
-            .json({ status: Status.FAILED, message: "Something Went Wrong" });
+            .json({ status: Status.FAILED, message: MESSAGES.INTERNAL_SERVER_ERROR });
     }
 };
 
@@ -102,19 +103,19 @@ const deleteMessage = async (req: Request, res: Response) => {
         if (!message) {
             return res.status(StatusCodes.NOT_FOUND).json({
                 status: Status.FAILED,
-                message: "Message not Found",
+                message: MESSAGES.MESSAGE_NOT_FOUND,
             });
         }
 
-        message.message = "deleted";
+        message.message = MESSAGES.MESSAGE_DELETED_CONTENT;
         message.isDeleted = true;
 
         await message.save();
 
-        req.io?.to(loggedUserEmail).emit("deleteMessage", {
+        req.io?.to(loggedUserEmail).emit(SOCKET_EVENTS.DELETE_MESSAGE, {
             messageId,
         });
-        req.io?.to(otherSideUserEmail).emit("deleteMessage", {
+        req.io?.to(otherSideUserEmail).emit(SOCKET_EVENTS.DELETE_MESSAGE, {
             messageId,
         });
 
@@ -122,7 +123,7 @@ const deleteMessage = async (req: Request, res: Response) => {
         console.log(err);
         return res
             .status(StatusCodes.INTERNAL_SERVER_ERROR)
-            .json({ status: Status.FAILED, message: "Something Went Wrong" });
+            .json({ status: Status.FAILED, message: MESSAGES.INTERNAL_SERVER_ERROR });
     }
 };
 
@@ -134,7 +135,7 @@ const updateMessage = async (req: Request, res: Response) => {
         if (!message) {
             return res.status(StatusCodes.NOT_FOUND).json({
                 status: Status.FAILED,
-                message: "Message not Found",
+                message: MESSAGES.MESSAGE_NOT_FOUND,
             });
         }
 
@@ -143,11 +144,11 @@ const updateMessage = async (req: Request, res: Response) => {
 
         await message.save();
 
-        req.io?.to(loggedUserEmail).emit("Message Edited", {
+        req.io?.to(loggedUserEmail).emit(SOCKET_EVENTS.MESSAGE_EDITED, {
             messageId,
             newMessage
         });
-        req.io?.to(otherSideUserEmail).emit("Message Edited", {
+        req.io?.to(otherSideUserEmail).emit(SOCKET_EVENTS.MESSAGE_EDITED, {
             messageId,
             newMessage
         });
@@ -155,7 +156,7 @@ const updateMessage = async (req: Request, res: Response) => {
         console.log(err);
         return res
             .status(StatusCodes.INTERNAL_SERVER_ERROR)
-            .json({ status: Status.FAILED, message: "Something Went Wrong" });
+            .json({ status: Status.FAILED, message: MESSAGES.INTERNAL_SERVER_ERROR });
     }
 };
 
@@ -167,22 +168,22 @@ const likeMessage = async (req: Request, res: Response) => {
         if (!message) {
             return res.status(StatusCodes.NOT_FOUND).json({
                 status: Status.FAILED,
-                message: "Message not found",
+                message: MESSAGES.MESSAGE_NOT_FOUND, // Assuming small casing difference is fine to unify
             });
         }
         if (message.like.includes(likeGivenUserEmail)) {
             return res.status(StatusCodes.CONFLICT).json({
                 status: Status.FAILED,
-                message: "Cannot like two times",
+                message: MESSAGES.CANNOT_LIKE_TWICE,
             });
         }
         message.like.push(likeGivenUserEmail);
         await message.save();
-        req.io?.to(likeGivenUserEmail).emit("likemessage", {
+        req.io?.to(likeGivenUserEmail).emit(SOCKET_EVENTS.LIKE_MESSAGE, {
             messageId,
             email: likeGivenUserEmail,
         });
-        req.io?.to(otherSideUserEmail).emit("likemessage", {
+        req.io?.to(otherSideUserEmail).emit(SOCKET_EVENTS.LIKE_MESSAGE, {
             messageId,
             email: likeGivenUserEmail,
         });
@@ -190,7 +191,7 @@ const likeMessage = async (req: Request, res: Response) => {
         console.log(error);
         return res
             .status(StatusCodes.INTERNAL_SERVER_ERROR)
-            .json({ status: Status.FAILED, message: "Something Went Wrong" });
+            .json({ status: Status.FAILED, message: MESSAGES.INTERNAL_SERVER_ERROR });
     }
 }
 

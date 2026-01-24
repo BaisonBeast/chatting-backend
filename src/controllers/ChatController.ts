@@ -5,6 +5,8 @@ import ChatUser from "@models/ChatUserModel";
 import Chat from "../models/ChatModel";
 import dotenv from "dotenv";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { generateNextWordPrompt, generateReplySuggestionPrompt } from "../utils/prompts";
+import { MESSAGES, SOCKET_EVENTS, CONFIG } from "../utils/constants";
 
 dotenv.config();
 
@@ -15,19 +17,19 @@ const getAllInvites = async (req: Request, res: Response) => {
         if (!user) {
             return res.status(StatusCodes.NOT_FOUND).json({
                 status: Status.FAILED,
-                message: "User not Exist with this email..",
+                message: MESSAGES.USER_NOT_FOUND_EMAIL,
             });
         }
         res.status(StatusCodes.OK).json({
             status: Status.SUCCESS,
-            message: "All invitelist fetched",
+            message: MESSAGES.INVITE_LIST_FETCHED,
             data: user.inviteList,
         });
     } catch (err) {
         console.log(err);
         return res
             .status(StatusCodes.INTERNAL_SERVER_ERROR)
-            .json({ status: Status.FAILED, message: "Something Went Wrong" });
+            .json({ status: Status.FAILED, message: MESSAGES.INTERNAL_SERVER_ERROR });
     }
 };
 
@@ -41,20 +43,20 @@ const getAllChats = async (req: Request, res: Response) => {
         if (!user) {
             return res.status(StatusCodes.NOT_FOUND).json({
                 status: Status.FAILED,
-                message: "User not Exist with this email..",
+                message: MESSAGES.USER_NOT_FOUND_EMAIL,
             });
         }
 
         res.status(StatusCodes.OK).json({
             status: Status.SUCCESS,
-            message: "All chatList fetched",
+            message: MESSAGES.CHAT_LIST_FETCHED,
             data: user.chatList,
         });
     } catch (err) {
         console.log(err);
         return res
             .status(StatusCodes.INTERNAL_SERVER_ERROR)
-            .json({ status: Status.FAILED, message: "Something Went Wrong" });
+            .json({ status: Status.FAILED, message: MESSAGES.INTERNAL_SERVER_ERROR });
     }
 };
 
@@ -69,14 +71,14 @@ const createInvite = async (req: Request, res: Response) => {
         if (!user) {
             return res.status(StatusCodes.NOT_FOUND).json({
                 status: Status.FAILED,
-                message: "User not Exist with this email..",
+                message: MESSAGES.USER_NOT_FOUND_EMAIL,
             });
         }
         const invitedUser = await ChatUser.findOne({ email: inviteeEmail });
         if (!invitedUser) {
             return res.status(StatusCodes.NOT_FOUND).json({
                 status: Status.FAILED,
-                message: "User not Exist with this email..",
+                message: MESSAGES.USER_NOT_FOUND_EMAIL,
             });
         }
 
@@ -84,7 +86,7 @@ const createInvite = async (req: Request, res: Response) => {
         if (match) {
             return res.status(StatusCodes.CONFLICT).json({
                 status: Status.FAILED,
-                message: "User already added in the chat-list",
+                message: MESSAGES.USER_ALREADY_IN_CHAT,
             });
         }
 
@@ -95,7 +97,7 @@ const createInvite = async (req: Request, res: Response) => {
         if (emailExistsInInvites) {
             return res.status(StatusCodes.CONFLICT).json({
                 status: Status.FAILED,
-                message: "Invite already exists for this email.",
+                message: MESSAGES.INVITE_EXISTS,
             });
         }
 
@@ -108,16 +110,16 @@ const createInvite = async (req: Request, res: Response) => {
         user.inviteList.push(newInvite);
         await user.save();
 
-        req.io?.to(invitedEmail).emit("newInvite", newInvite);
+        req.io?.to(invitedEmail).emit(SOCKET_EVENTS.NEW_INVITE, newInvite);
 
         return res
             .status(StatusCodes.ACCEPTED)
-            .json({ status: Status.SUCCESS, message: "Invite sent" });
+            .json({ status: Status.SUCCESS, message: MESSAGES.INVITE_SENT });
     } catch (err) {
         console.log(err);
         return res
             .status(StatusCodes.INTERNAL_SERVER_ERROR)
-            .json({ status: Status.FAILED, message: "Something Went Wrong" });
+            .json({ status: Status.FAILED, message: MESSAGES.INTERNAL_SERVER_ERROR });
     }
 };
 
@@ -131,7 +133,7 @@ const rejectInvite = async (req: Request, res: Response) => {
         if (!user) {
             return res.status(StatusCodes.NOT_FOUND).json({
                 status: Status.FAILED,
-                message: "User not Exist with this email..",
+                message: MESSAGES.USER_NOT_FOUND_EMAIL,
             });
         }
         user.inviteList.pull({ email: newUserEmail });
@@ -139,13 +141,13 @@ const rejectInvite = async (req: Request, res: Response) => {
 
         return res.status(StatusCodes.OK).json({
             status: Status.SUCCESS,
-            message: "Invite removed successfully",
+            message: MESSAGES.INVITE_REMOVED,
         });
     } catch (err) {
         console.log(err);
         return res
             .status(StatusCodes.INTERNAL_SERVER_ERROR)
-            .json({ status: Status.FAILED, message: "Something Went Wrong" });
+            .json({ status: Status.FAILED, message: MESSAGES.INTERNAL_SERVER_ERROR });
     }
 };
 
@@ -159,14 +161,14 @@ const acceptInvite = async (req: Request, res: Response) => {
         if (!loggedUser) {
             return res.status(StatusCodes.NOT_FOUND).json({
                 status: Status.FAILED,
-                message: "User not Exist",
+                message: MESSAGES.USER_NOT_EXIST,
             });
         }
         const newUser = await ChatUser.findOne({ email: newUserEmail });
         if (!newUser) {
             return res.status(StatusCodes.NOT_FOUND).json({
                 status: Status.FAILED,
-                message: "User not Exist",
+                message: MESSAGES.USER_NOT_EXIST,
             });
         }
 
@@ -200,27 +202,27 @@ const acceptInvite = async (req: Request, res: Response) => {
 
         req.io
             ?.to(loggedUserEmail)
-            .emit("createChat", {
+            .emit(SOCKET_EVENTS.CREATE_CHAT, {
                 newChat,
-                message: "User added to your chatList",
+                message: MESSAGES.USER_ADDED_TO_CHAT,
             });
         req.io
             ?.to(newUserEmail)
-            .emit("createChat", {
+            .emit(SOCKET_EVENTS.CREATE_CHAT, {
                 newChat,
                 message: `${loggedUserEmail} has appected your invite`,
             });
 
         res.status(StatusCodes.CREATED).json({
             status: Status.SUCCESS,
-            message: "User added to the chatlist",
+            message: MESSAGES.USER_ADDED_TO_CHATLIST,
             data: participants,
         });
     } catch (error) {
         console.log(error);
         return res
             .status(StatusCodes.INTERNAL_SERVER_ERROR)
-            .json({ status: Status.FAILED, message: "Something Went Wrong" });
+            .json({ status: Status.FAILED, message: MESSAGES.INTERNAL_SERVER_ERROR });
     }
 };
 
@@ -238,7 +240,7 @@ const deleteChat = async (req: Request, res: Response) => {
         if (!loggedUser || !otherSideUser) {
             return res
                 .status(404)
-                .json({ message: "One or both users not found" });
+                .json({ message: MESSAGES.USERS_NOT_FOUND });
         }
 
         loggedUser.chatList = loggedUser.chatList.filter(
@@ -260,27 +262,27 @@ const deleteChat = async (req: Request, res: Response) => {
 
         const chat = await Chat.findByIdAndDelete(chatId);
         if (!chat) {
-            return res.status(404).json({ message: "Chat not found" });
+            return res.status(404).json({ message: MESSAGES.CHAT_NOT_FOUND });
         }
 
-        req.io?.to(loggedUserEmail).emit("removeChat", {
-            message: 'Removed chat',
+        req.io?.to(loggedUserEmail).emit(SOCKET_EVENTS.REMOVE_CHAT, {
+            message: MESSAGES.REMOVED_CHAT,
             chatId
         });
-        req.io?.to(otherSideUserEmail).emit("removeChat", {
+        req.io?.to(otherSideUserEmail).emit(SOCKET_EVENTS.REMOVE_CHAT, {
             message: `${loggedUser.username} has removed the chat with you`,
             chatId,
         });
 
         res.status(StatusCodes.OK).json({
             status: Status.SUCCESS,
-            message: "ChatList removed",
+            message: MESSAGES.CHAT_LIST_REMOVED,
         });
     } catch (err) {
         console.log(err);
         return res
             .status(StatusCodes.INTERNAL_SERVER_ERROR)
-            .json({ status: "FAILED", message: "Something Went Wrong" });
+            .json({ status: "FAILED", message: MESSAGES.INTERNAL_SERVER_ERROR });
     }
 };
 
@@ -290,14 +292,9 @@ const getSuggestion = async (req: Request, res: Response) => {
 
         const { textContent } = req.query;
         const genAI = new GoogleGenerativeAI(API_KEY as string);
-        const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+        const model = genAI.getGenerativeModel({ model: CONFIG.GEMINI_MODEL });
 
-        const prompt = `Based on the given input ${textContent}, predict the next word the user is likely to type. Provide exactly 5 possible word suggestions in a comma-separated format.
-
-Format:
-Suggestion1, Suggestion2, Suggestion3, Suggestion4, Suggestion5
-
-Ensure the suggestions are contextually relevant and likely to follow naturally. Do not include explanations or the user's input—only the five words.`;
+        const prompt = generateNextWordPrompt(textContent as string);
 
         const result = await model.generateContent(prompt);
 
@@ -309,14 +306,14 @@ Ensure the suggestions are contextually relevant and likely to follow naturally.
         } else {
             res.status(500).json({
                 status: "FAILED",
-                message: "No suggestions returned from API",
+                message: MESSAGES.NO_SUGGESTIONS,
             });
         }
     } catch (error) {
         console.log(error);
         return res
             .status(StatusCodes.INTERNAL_SERVER_ERROR)
-            .json({ status: "FAILED", message: "Something Went Wrong" });
+            .json({ status: "FAILED", message: MESSAGES.INTERNAL_SERVER_ERROR });
     }
 };
 
@@ -325,13 +322,9 @@ const getReplySuggestions = async (req: Request, res: Response) => {
         const API_KEY = process.env.GEMINI_API_KEY;
         const { textContent } = req.query;
         const genAI = new GoogleGenerativeAI(API_KEY as string);
-        const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+        const model = genAI.getGenerativeModel({ model: CONFIG.GEMINI_MODEL });
 
-        const prompt = `You are building a chat application and want to provide 5 short, concise reply suggestions based on the user's input. The user has typed the following text: "${textContent}". Provide 5 brief and relevant reply suggestions in the following format:
-
-Reply 1, Reply 2, Reply 3, Reply 4, Reply 5
-
-Ensure that the replies are short and to the point. Do not include any other text or explanation, just the comma-separated suggestions.`;
+        const prompt = generateReplySuggestionPrompt(textContent as string);
 
         const result = await model.generateContent(prompt);
 
@@ -342,14 +335,14 @@ Ensure that the replies are short and to the point. Do not include any other tex
         } else {
             res.status(500).json({
                 status: "FAILED",
-                message: "No reply suggestions returned from API",
+                message: MESSAGES.NO_REPLY_SUGGESTIONS,
             });
         }
     } catch (error) {
         console.log(error);
         return res
             .status(StatusCodes.INTERNAL_SERVER_ERROR)
-            .json({ status: "FAILED", message: "Something Went Wrong" });
+            .json({ status: "FAILED", message: MESSAGES.INTERNAL_SERVER_ERROR });
     }
 };
 

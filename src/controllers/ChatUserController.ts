@@ -9,6 +9,7 @@ import {
     randomNameGenerator,
     uploadImage,
 } from "src/services/ChatUserRouteService";
+import { MESSAGES, CONFIG } from "../utils/constants";
 
 const loginUser = async (req: Request, res: Response) => {
     const { email, password } = req.body;
@@ -17,16 +18,16 @@ const loginUser = async (req: Request, res: Response) => {
         if (!user) {
             return res.status(StatusCodes.NOT_FOUND).json({
                 status: Status.FAILED,
-                message: "USER NOT FOUND!!",
+                message: MESSAGES.USER_NOT_FOUND,
             });
         } else {
             const match = await bcrypt.compare(password, user.password);
             if (!match)
                 return res.status(StatusCodes.UNAUTHORIZED).send({
                     status: Status.FAILED,
-                    message: "Password does not match!!",
+                    message: MESSAGES.PASSWORD_MISMATCH,
                 });
-            const token = jwt.sign({ id: user._id, email: user.email }, process.env.JWT_SECRET || "fallbacksecret", { expiresIn: "1d" });
+            const token = jwt.sign({ id: user._id, email: user.email }, process.env.JWT_SECRET || CONFIG.FALLBACK_SECRET, { expiresIn: CONFIG.TOKEN_EXPIRY as any });
 
             const dataToSend = {
                 id: user._id,
@@ -39,13 +40,13 @@ const loginUser = async (req: Request, res: Response) => {
             return res.status(StatusCodes.ACCEPTED).json({
                 status: Status.SUCCESS,
                 data: dataToSend,
-                message: "Successfully Logged In!!",
+                message: MESSAGES.LOGGED_IN,
             });
         }
     } catch (error) {
         return res
             .status(StatusCodes.INTERNAL_SERVER_ERROR)
-            .json({ status: Status.FAILED, message: "Something Went Wrong" });
+            .json({ status: Status.FAILED, message: MESSAGES.INTERNAL_SERVER_ERROR });
     }
 };
 
@@ -57,7 +58,7 @@ const registerUser = async (req: Request, res: Response) => {
         if (user) {
             return res.status(StatusCodes.CONFLICT).json({
                 status: Status.FAILED,
-                message: "User Already exist with this email",
+                message: MESSAGES.USER_EXISTS_EMAIL,
             });
         }
         const salt = await bcrypt.genSalt(10);
@@ -78,7 +79,7 @@ const registerUser = async (req: Request, res: Response) => {
 
         await newUser.save();
 
-        const token = jwt.sign({ id: newUser._id, email: newUser.email }, process.env.JWT_SECRET || "fallbacksecret", { expiresIn: "1d" });
+        const token = jwt.sign({ id: newUser._id, email: newUser.email }, process.env.JWT_SECRET || CONFIG.FALLBACK_SECRET, { expiresIn: CONFIG.TOKEN_EXPIRY as any });
 
         const dataToSend = {
             id: newUser._id,
@@ -94,13 +95,13 @@ const registerUser = async (req: Request, res: Response) => {
             .json({
                 status: Status.SUCCESS,
                 data: dataToSend,
-                message: "User Successfully Registerd!!",
+                message: MESSAGES.REGISTERED,
             });
     } catch (error) {
         console.log(error);
         return res
             .status(StatusCodes.INTERNAL_SERVER_ERROR)
-            .json({ status: Status.FAILED, message: "Something Went Wrong" });
+            .json({ status: Status.FAILED, message: MESSAGES.INTERNAL_SERVER_ERROR });
     }
 };
 
@@ -113,7 +114,7 @@ const updateUser = async (req: Request, res: Response) => {
         if (!user) {
             return res.status(StatusCodes.CONFLICT).json({
                 status: Status.FAILED,
-                message: "User not found with this email",
+                message: MESSAGES.USER_NOT_FOUND_CONFLICT,
             });
         }
         if (file) {
@@ -126,12 +127,15 @@ const updateUser = async (req: Request, res: Response) => {
 
         await user.save();
 
+        const token = jwt.sign({ id: user._id, email: user.email }, process.env.JWT_SECRET || CONFIG.FALLBACK_SECRET, { expiresIn: CONFIG.TOKEN_EXPIRY as any });
+
         const dataToSend = {
             id: user._id,
             email: user.email,
             username: user.username,
             profilePic: user.profilePic,
-            background: user.background
+            background: user.background,
+            token
         };
 
         return res
@@ -139,14 +143,14 @@ const updateUser = async (req: Request, res: Response) => {
             .json({
                 status: Status.SUCCESS,
                 data: dataToSend,
-                message: "User Successfully Updated!!",
+                message: MESSAGES.UPDATED,
             });
 
     } catch (err) {
         console.log(err);
         return res
             .status(StatusCodes.INTERNAL_SERVER_ERROR)
-            .json({ status: Status.FAILED, message: "Something Went Wrong" });
+            .json({ status: Status.FAILED, message: MESSAGES.INTERNAL_SERVER_ERROR });
     }
 }
 
