@@ -6,10 +6,16 @@ import { Status } from "src/enums/status.enum.js";
 import { uploadFile } from "../services/messageService.js";
 import { MESSAGES, SOCKET_EVENTS } from "../utils/constants";
 
+import Group from "../models/GroupModel";
+
 const getAllMessages = async (req: Request, res: Response) => {
     const { chatId } = req.params;
     try {
-        const chat = await Chat.findOne({ _id: chatId }).populate("messages");
+        let chat: any = await Chat.findOne({ _id: chatId }).populate("messages");
+        if (!chat) {
+            chat = await Group.findOne({ _id: chatId }).populate("messages");
+        }
+
         if (!chat) {
             return res.status(StatusCodes.NOT_FOUND).json({
                 status: Status.FAILED,
@@ -32,13 +38,20 @@ const getAllMessages = async (req: Request, res: Response) => {
 const createNewMessage = async (req: Request, res: Response) => {
     const { chatId } = req.params;
     try {
-        const { message, messageType, otherSideUser } = req.body;
+        const { message, messageType } = req.body; // otherSideUser may not be needed or relevant for groups
         const loggedInUser = req.user.email;
         console.log(req.body);
 
         const file = (req.file as Express.Multer.File) ?? null;
 
-        const chat = await Chat.findOne({ _id: chatId });
+        let chat: any = await Chat.findOne({ _id: chatId });
+        let isGroup = false;
+
+        if (!chat) {
+            chat = await Group.findOne({ _id: chatId });
+            isGroup = !!chat;
+        }
+
         if (!chat) {
             return res.status(StatusCodes.NOT_FOUND).json({
                 status: Status.FAILED,
@@ -71,11 +84,14 @@ const createNewMessage = async (req: Request, res: Response) => {
         chat.messages.push(newMessage._id);
         await chat.save();
 
-        req.io?.to(loggedInUser).emit(SOCKET_EVENTS.NEW_MESSAGE, {
-            message: newMessage,
-        });
-        req.io?.to(otherSideUser).emit(SOCKET_EVENTS.NEW_MESSAGE, {
-            message: newMessage,
+        // Emit to all participants
+        // For Chat (1-on-1): participants has 2 users.
+        // For Group: participants has N users.
+        chat.participants.forEach((participant: any) => {
+            req.io?.to(participant.email).emit(SOCKET_EVENTS.NEW_MESSAGE, {
+                message: newMessage,
+                chatId // Return chatId so frontend knows where to place it
+            });
         });
 
         res.status(StatusCodes.OK).json({

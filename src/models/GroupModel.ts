@@ -24,6 +24,15 @@ const GroupSchema = new mongoose.Schema(
             type: String,
             required: true,
         },
+        groupIcon: {
+            type: String,
+            default: "",
+        },
+        admin: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "ChatUser",
+            required: true,
+        },
         messages: [
             {
                 type: mongoose.Schema.Types.ObjectId,

@@ -55,9 +55,14 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
     res.status(500).json({ message: "Internal Server Error" });
 });
 
+import GroupRoutes from "./routes/GroupRoute";
+
+// ... previous midlleware setup
+
 app.use("/api/messages", authMiddleware, MessageRoutes);
 app.use("/api/chat", authMiddleware, ChatRoutes);
 app.use("/api/chatUser", ChatUserRoutes);
+app.use("/api/group", authMiddleware, GroupRoutes);
 
 import { setUserOnline, setUserOffline, getOnlineUsers } from "./config/redis";
 
