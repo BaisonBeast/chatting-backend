@@ -88,6 +88,24 @@ io.on("connection", (socket) => {
         // Optionally remove immediately, or let heartbeat expire
         // await setUserOffline(email); // Requires tracking email on socket object
     });
+
+    // WebRTC Signaling Events
+    socket.on("callUser", (data) => {
+        const { userToCall, signalData, from, name } = data;
+        io.to(userToCall).emit("callUser", { signal: signalData, from, name });
+    });
+
+    socket.on("answerCall", (data) => {
+        io.to(data.to).emit("callAccepted", data.signal);
+    });
+
+    socket.on("ice-candidate", (data) => {
+        io.to(data.to).emit("ice-candidate", data.candidate);
+    });
+
+    socket.on("endCall", (data) => {
+        io.to(data.to).emit("callEnded");
+    });
 });
 
 io.engine.on("connection_error", (err) => {
