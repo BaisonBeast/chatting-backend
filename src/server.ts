@@ -121,3 +121,8 @@ app.get("/", (req, res) => {
     logger.info("Health check accessed");
     res.send("Hello new friend!");
 });
+
+const PORT = process.env.PORT || 5000;
+server.listen(PORT, () => {
+    logger.info(chalk.yellow(`Server is running on port ${PORT}`));
+});

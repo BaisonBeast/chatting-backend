@@ -58,6 +58,11 @@ const ChatUserSchema = new mongoose.Schema({
             default: [],
         },
     ],
+    demoUser: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "ChatUser",
+        default: null,
+    },
 });
 
 const ChatUser = mongoose.model("ChatUser", ChatUserSchema);

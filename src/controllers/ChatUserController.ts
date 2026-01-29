@@ -12,7 +12,8 @@ import {
 import { MESSAGES, CONFIG } from "../utils/constants";
 
 const loginUser = async (req: Request, res: Response) => {
-    const { email, password } = req.body;
+    const { email: emailInput, password } = req.body;
+    const email = emailInput.toLowerCase();
     try {
         const user = await ChatUser.findOne({ email });
         if (!user) {
@@ -51,7 +52,8 @@ const loginUser = async (req: Request, res: Response) => {
 };
 
 const registerUser = async (req: Request, res: Response) => {
-    const { email, password, username } = req.body;
+    const { email: emailInput, password, username } = req.body;
+    const email = emailInput.toLowerCase();
     const file = req.file as Express.Multer.File ?? null;
     try {
         const user = await ChatUser.findOne({ email });
@@ -77,6 +79,23 @@ const registerUser = async (req: Request, res: Response) => {
             profilePic: profilePictureUrl,
         });
 
+        await newUser.save();
+
+        // Create Demo User immediately
+        const demoEmail = `demo_${email}`;
+        const demoSalt = await bcrypt.genSalt(10);
+        const demoHashedPassword = await bcrypt.hash("demo123", demoSalt);
+
+        const demoUser = new ChatUser({
+            email: demoEmail,
+            password: demoHashedPassword,
+            username: `Demo ${newUserName}`,
+            profilePic: randomImage(),
+            background: 1,
+        });
+        await demoUser.save();
+
+        newUser.demoUser = demoUser._id;
         await newUser.save();
 
         const token = jwt.sign({ id: newUser._id, email: newUser.email }, process.env.JWT_SECRET || CONFIG.FALLBACK_SECRET, { expiresIn: CONFIG.TOKEN_EXPIRY as any });
@@ -106,7 +125,8 @@ const registerUser = async (req: Request, res: Response) => {
 };
 
 const updateUser = async (req: Request, res: Response) => {
-    const { username, background, email } = req.body;
+    const { username, background, email: emailInput } = req.body;
+    const email = emailInput.toLowerCase();
 
     const file = req.file as Express.Multer.File ?? null;
     try {
@@ -154,4 +174,71 @@ const updateUser = async (req: Request, res: Response) => {
     }
 }
 
-export { loginUser, registerUser, updateUser };
+const getDemoUser = async (req: Request, res: Response) => {
+    const { email: emailInput } = req.body;
+    const email = emailInput.toLowerCase();
+    try {
+        const user = await ChatUser.findOne({ email });
+        if (!user) {
+            return res.status(StatusCodes.NOT_FOUND).json({
+                status: Status.FAILED,
+                message: MESSAGES.USER_NOT_FOUND,
+            });
+        }
+
+        let demoUser;
+        if (user.demoUser) {
+            demoUser = await ChatUser.findById(user.demoUser);
+        }
+
+        if (!demoUser) {
+            // Create a new demo user
+            const demoEmail = `demo_${user.email}`;
+            // Check if demo user already exists by email (edge case)
+            demoUser = await ChatUser.findOne({ email: demoEmail });
+
+            if (!demoUser) {
+                const salt = await bcrypt.genSalt(10);
+                const hashedPassword = await bcrypt.hash("demo123", salt); // Default password for demo users
+
+                demoUser = new ChatUser({
+                    email: demoEmail,
+                    password: hashedPassword,
+                    username: `Demo ${user.username}`,
+                    profilePic: randomImage(), // Helper from service
+                    background: 1,
+                });
+                await demoUser.save();
+            }
+
+            // Link to main user
+            user.demoUser = demoUser._id;
+            await user.save();
+        }
+
+        const token = jwt.sign({ id: demoUser._id, email: demoUser.email }, process.env.JWT_SECRET || CONFIG.FALLBACK_SECRET, { expiresIn: CONFIG.TOKEN_EXPIRY as any });
+
+        const dataToSend = {
+            id: demoUser._id,
+            email: demoUser.email,
+            username: demoUser.username,
+            profilePic: demoUser.profilePic,
+            background: demoUser.background,
+            token
+        };
+
+        return res.status(StatusCodes.OK).json({
+            status: Status.SUCCESS,
+            data: dataToSend,
+            message: "Demo user retrieved successfully",
+        });
+
+    } catch (error) {
+        console.error("Error in getDemoUser:", error);
+        return res
+            .status(StatusCodes.INTERNAL_SERVER_ERROR)
+            .json({ status: Status.FAILED, message: MESSAGES.INTERNAL_SERVER_ERROR });
+    }
+};
+
+export { loginUser, registerUser, updateUser, getDemoUser };

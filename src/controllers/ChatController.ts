@@ -62,27 +62,30 @@ const getAllChats = async (req: Request, res: Response) => {
 
 const createInvite = async (req: Request, res: Response) => {
     try {
-        const invitedEmail = req.user.email;
-        const { inviteeEmail, inviteeUsername, inviteeProfilePic } =
-            req.body;
-        const user = await ChatUser.findOne({ email: invitedEmail }).populate(
+        const senderEmail = req.user.email;
+        const { recipientEmail: recipientEmailInput } = req.body;
+        const recipientEmail = recipientEmailInput.toLowerCase();
+
+        const senderUser = await ChatUser.findOne({ email: senderEmail }).populate(
             "inviteList"
         );
-        if (!user) {
+        if (!senderUser) {
             return res.status(StatusCodes.NOT_FOUND).json({
                 status: Status.FAILED,
-                message: MESSAGES.USER_NOT_FOUND_EMAIL,
-            });
-        }
-        const invitedUser = await ChatUser.findOne({ email: inviteeEmail });
-        if (!invitedUser) {
-            return res.status(StatusCodes.NOT_FOUND).json({
-                status: Status.FAILED,
-                message: MESSAGES.USER_NOT_FOUND_EMAIL,
+                message: "Sender User not found with email: " + senderEmail,
             });
         }
 
-        const match = user.friends.includes(inviteeEmail);
+        const recipientUser = await ChatUser.findOne({ email: recipientEmail });
+        if (!recipientUser) {
+            return res.status(StatusCodes.NOT_FOUND).json({
+                status: Status.FAILED,
+                message: "Recipient User not found with email: " + recipientEmail,
+            });
+        }
+
+        // Check if already friends
+        const match = senderUser.friends.includes(recipientEmail);
         if (match) {
             return res.status(StatusCodes.CONFLICT).json({
                 status: Status.FAILED,
@@ -90,8 +93,9 @@ const createInvite = async (req: Request, res: Response) => {
             });
         }
 
-        const emailExistsInInvites = user.inviteList.some(
-            (invite: any) => invite.email === inviteeEmail
+        // Check if invite already sent (exists in RECIPIENT's list)
+        const emailExistsInInvites = recipientUser.inviteList.some(
+            (invite: any) => invite.email === senderEmail
         );
 
         if (emailExistsInInvites) {
@@ -101,16 +105,28 @@ const createInvite = async (req: Request, res: Response) => {
             });
         }
 
+        // Check if the person we are inviting has already invited US (mutual)
+        const hasReceivedInvite = senderUser.inviteList.some(
+            (invite: any) => invite.email === recipientEmail
+        );
+
+        if (hasReceivedInvite) {
+            return res.status(StatusCodes.CONFLICT).json({
+                status: Status.FAILED,
+                message: "This user has already invited you. Please check your invites.",
+            });
+        }
+
         const newInvite = {
-            email: inviteeEmail,
-            username: inviteeUsername,
-            profilePic: inviteeProfilePic,
+            email: senderUser.email,
+            username: senderUser.username,
+            profilePic: senderUser.profilePic,
         };
 
-        user.inviteList.push(newInvite);
-        await user.save();
+        recipientUser.inviteList.push(newInvite);
+        await recipientUser.save();
 
-        req.io?.to(invitedEmail).emit(SOCKET_EVENTS.NEW_INVITE, newInvite);
+        req.io?.to(recipientEmail).emit(SOCKET_EVENTS.NEW_INVITE, newInvite);
 
         return res
             .status(StatusCodes.ACCEPTED)
@@ -126,7 +142,8 @@ const createInvite = async (req: Request, res: Response) => {
 const rejectInvite = async (req: Request, res: Response) => {
     try {
         const loggedUserEmail = req.user.email;
-        const { newUserEmail } = req.body;
+        const { newUserEmail: newUserEmailInput } = req.body;
+        const newUserEmail = newUserEmailInput.toLowerCase();
         const user = await ChatUser.findOne({
             email: loggedUserEmail,
         }).populate("inviteList");
@@ -154,7 +171,8 @@ const rejectInvite = async (req: Request, res: Response) => {
 const acceptInvite = async (req: Request, res: Response) => {
     try {
         const loggedUserEmail = req.user.email;
-        const { newUserEmail } = req.body;
+        const { newUserEmail: newUserEmailInput } = req.body;
+        const newUserEmail = newUserEmailInput.toLowerCase();
         const loggedUser = await ChatUser.findOne({
             email: loggedUserEmail,
         }).populate("inviteList");
@@ -231,7 +249,8 @@ const deleteChat = async (req: Request, res: Response) => {
 
     try {
         const loggedUserEmail = req.user.email;
-        const { otherSideUserEmail } = req.body;
+        const { otherSideUserEmail: otherSideUserEmailInput } = req.body;
+        const otherSideUserEmail = otherSideUserEmailInput.toLowerCase();
         const loggedUser = await ChatUser.findOne({ email: loggedUserEmail });
         const otherSideUser = await ChatUser.findOne({
             email: otherSideUserEmail,

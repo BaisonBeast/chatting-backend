@@ -4,6 +4,7 @@ import {
     loginUser,
     registerUser,
     updateUser,
+    getDemoUser,
 } from "../controllers/ChatUserController";
 import multer from "multer";
 
@@ -40,5 +41,7 @@ router.post(
     },
     updateUser
 );
+
+router.post("/demo-user", authMiddleware, getDemoUser);
 
 export default router;
