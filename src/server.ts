@@ -31,14 +31,14 @@ declare global {
 
 app.use(
     cors({
-        origin: API_URL,
+        origin: "*", // Allow all origins for easier testing/deployment
         credentials: true,
     })
 );
 
 const io = new Server(server, {
     cors: {
-        origin: API_URL,
+        origin: "*", // Allow all origins
         methods: ["GET", "POST"],
         credentials: true,
     },
