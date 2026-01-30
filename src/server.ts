@@ -29,16 +29,47 @@ declare global {
     }
 }
 
+const allowedOrigins = [
+    "http://localhost:5173",
+    "https://chizzel.space",
+    "https://www.chizzel.space",
+    "https://backend.chizzel.space",
+];
+
 app.use(
     cors({
-        origin: "*",
+        origin: (origin, callback) => {
+            // Allow requests with no origin (like mobile apps or curl requests)
+            if (!origin) return callback(null, true);
+
+            if (allowedOrigins.includes(origin)) {
+                callback(null, true);
+            } else {
+                // Log the blocked origin for debugging
+                console.log("Blocked by CORS:", origin);
+                // For your testing, you can temporarily uncomment the next line to allow ALL, 
+                // but 'origin: *' is invalid with credentials. You must return the origin itself.
+                // callback(null, origin); 
+
+                // Strict check:
+                callback(new Error("Not allowed by CORS"));
+            }
+        },
         credentials: true,
     })
 );
 
 const io = new Server(server, {
     cors: {
-        origin: "*",
+        origin: (origin, callback) => {
+            if (!origin) return callback(null, true);
+            if (allowedOrigins.includes(origin)) {
+                callback(null, true);
+            } else {
+                console.log("Socket Blocked by CORS:", origin);
+                callback(new Error("Not allowed by CORS"));
+            }
+        },
         methods: ["GET", "POST"],
         credentials: true,
     },
