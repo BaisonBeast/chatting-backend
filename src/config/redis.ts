@@ -18,7 +18,7 @@ redis.on("error", (err) => {
 });
 
 export const setUserOnline = async (userId: string, socketId: string) => {
-    await redis.set(`online:${userId}`, socketId, "EX", 10); // Expires in 10 seconds
+    await redis.set(`online:${userId}`, socketId, "EX", 5); // Expires in 10 seconds
 };
 
 export const setUserOffline = async (userId: string) => {

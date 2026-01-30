@@ -135,6 +135,11 @@ const deleteMessage = async (req: Request, res: Response) => {
             messageId,
         });
 
+        res.status(StatusCodes.OK).json({
+            status: Status.SUCCESS,
+            message: "Message deleted successfully",
+        });
+
     } catch (err) {
         console.log(err);
         return res
@@ -167,6 +172,12 @@ const updateMessage = async (req: Request, res: Response) => {
         req.io?.to(otherSideUserEmail).emit(SOCKET_EVENTS.MESSAGE_EDITED, {
             messageId,
             newMessage
+        });
+
+        res.status(StatusCodes.OK).json({
+            status: Status.SUCCESS,
+            message: MESSAGES.UPDATED,
+            data: message,
         });
     } catch (err: any) {
         console.log(err);
@@ -202,6 +213,11 @@ const likeMessage = async (req: Request, res: Response) => {
         req.io?.to(otherSideUserEmail).emit(SOCKET_EVENTS.LIKE_MESSAGE, {
             messageId,
             email: likeGivenUserEmail,
+        });
+
+        res.status(StatusCodes.OK).json({
+            status: Status.SUCCESS,
+            message: "Message liked successfully",
         });
     } catch (error) {
         console.log(error);
