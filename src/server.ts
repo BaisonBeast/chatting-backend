@@ -57,19 +57,12 @@ const allowedOrigins = [
 app.use(
     cors({
         origin: (origin, callback) => {
-            // Allow requests with no origin (like mobile apps or curl requests)
             if (!origin) return callback(null, true);
 
             if (allowedOrigins.includes(origin)) {
                 callback(null, true);
             } else {
-                // Log the blocked origin for debugging
                 console.log("Blocked by CORS:", origin);
-                // For your testing, you can temporarily uncomment the next line to allow ALL, 
-                // but 'origin: *' is invalid with credentials. You must return the origin itself.
-                // callback(null, origin); 
-
-                // Strict check:
                 callback(new Error("Not allowed by CORS"));
             }
         },
@@ -147,8 +140,6 @@ io.on("connection", (socket) => {
     socket.on("heartbeat", async (email) => {
         try {
             await setUserOnline(email, socket.id);
-            // Too verbose to log every heartbeat, but useful for short term debug
-            // console.log(`Heartbeat received from ${email}`);
         } catch (e) {
             logger.error(chalk.red(`Heartbeat error for ${email}: ${e}`));
         }
@@ -157,7 +148,6 @@ io.on("connection", (socket) => {
     socket.on("checkOnlineStatus", async (emails: string[]) => {
         try {
             const onlineUsers = await getOnlineUsers(emails);
-            // logger.info(`Checking status for ${emails.length} users. Online: ${onlineUsers.length}`);
             socket.emit("onlineStatusUpdate", onlineUsers);
         } catch (e) {
             logger.error(chalk.red(`checkOnlineStatus error: ${e}`));

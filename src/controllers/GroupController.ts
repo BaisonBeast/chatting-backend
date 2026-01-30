@@ -19,10 +19,8 @@ const createGroup = async (req: Request, res: Response) => {
             });
         }
 
-        // Validate participants
         const participantUsers = await ChatUser.find({ email: { $in: participants } });
 
-        // Prepare participant objects for Group Schema
         const groupParticipants = [
             {
                 email: adminUser.email,
