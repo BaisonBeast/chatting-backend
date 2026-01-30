@@ -14,7 +14,25 @@ import { authMiddleware } from "./middleware/authMiddleware";
 dotenv.config();
 connectDB();
 const app = express();
-app.use(cors());
+app.set("trust proxy", 1);
+
+app.use(express.json());
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        console.log("Blocked by CORS:", origin);
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
+  })
+);
+
 app.use(express.json());
 
 export const server = http.createServer(app);
@@ -60,6 +78,7 @@ app.use(
 );
 
 const io = new Server(server, {
+    path: "/socket.io",
     cors: {
         origin: (origin, callback) => {
             if (!origin) return callback(null, true);
@@ -70,10 +89,10 @@ const io = new Server(server, {
                 callback(new Error("Not allowed by CORS"));
             }
         },
-        methods: ["GET", "POST"],
         credentials: true,
     },
 });
+
 
 app.use((req, res, next) => {
     logger.info(`${req.method} ${req.url}`);
