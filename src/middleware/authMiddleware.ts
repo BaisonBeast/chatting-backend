@@ -17,7 +17,10 @@ export const authMiddleware = (req: AuthRequest, res: Response, next: NextFuncti
         const verified = jwt.verify(token, process.env.JWT_SECRET || "fallbacksecret");
         req.user = verified;
         next();
-    } catch (err) {
-        res.status(StatusCodes.FORBIDDEN).json({ message: "Invalid Token" });
+    } catch (err: any) {
+        if (err.name === 'TokenExpiredError') {
+            return res.status(StatusCodes.UNAUTHORIZED).json({ message: "Token Expired" });
+        }
+        return res.status(StatusCodes.FORBIDDEN).json({ message: "Invalid Token" });
     }
 };
