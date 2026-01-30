@@ -31,14 +31,14 @@ declare global {
 
 app.use(
     cors({
-        origin: "*", // Allow all origins for easier testing/deployment
+        origin: "*",
         credentials: true,
     })
 );
 
 const io = new Server(server, {
     cors: {
-        origin: "*", // Allow all origins
+        origin: "*",
         methods: ["GET", "POST"],
         credentials: true,
     },
@@ -57,8 +57,6 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
 
 import GroupRoutes from "./routes/GroupRoute";
 
-// ... previous midlleware setup
-
 app.use("/api/messages", authMiddleware, MessageRoutes);
 app.use("/api/chat", authMiddleware, ChatRoutes);
 app.use("/api/chatUser", ChatUserRoutes);
@@ -66,32 +64,58 @@ app.use("/api/group", authMiddleware, GroupRoutes);
 
 import { setUserOnline, setUserOffline, getOnlineUsers } from "./config/redis";
 
-// ... imports
+app.get("/api/health", (req, res) => {
+    res.status(200).json({ status: "ok", redis: "check_logs" });
+});
+
+io.engine.on("connection_error", (err) => {
+    logger.error(chalk.red(`Socket.io Engine Error: ${err.req?.url} - ${err.message}`));
+    console.error("Detailed Socket Error:", err);
+});
 
 io.on("connection", (socket) => {
-    logger.info(chalk.green("New WebSocket connection"));
+    logger.info(chalk.green(`New WebSocket connection: ${socket.id}`));
+
+    // Log transport mechanism (polling/websocket)
+    console.log(`Socket ${socket.id} transport: ${socket.conn.transport.name}`);
 
     socket.on("join", async (email) => {
+        if (!email) {
+            logger.error(chalk.red(`Socket ${socket.id} tried to join with empty email`));
+            return;
+        }
         socket.join(email);
-        logger.info(chalk.blue(`User joined room: ${email}`));
-        // Initial online status set
-        await setUserOnline(email, socket.id);
+        logger.info(chalk.blue(`User joined room: ${email} (Socket: ${socket.id})`));
+        try {
+            await setUserOnline(email, socket.id);
+            logger.info(`Set user ${email} online in Redis`);
+        } catch (e) {
+            logger.error(chalk.red(`Failed to set user online: ${e}`));
+        }
     });
 
     socket.on("heartbeat", async (email) => {
-        // Refresh TTL
-        await setUserOnline(email, socket.id);
+        try {
+            await setUserOnline(email, socket.id);
+            // Too verbose to log every heartbeat, but useful for short term debug
+            // console.log(`Heartbeat received from ${email}`);
+        } catch (e) {
+            logger.error(chalk.red(`Heartbeat error for ${email}: ${e}`));
+        }
     });
 
     socket.on("checkOnlineStatus", async (emails: string[]) => {
-        const onlineUsers = await getOnlineUsers(emails);
-        socket.emit("onlineStatusUpdate", onlineUsers);
+        try {
+            const onlineUsers = await getOnlineUsers(emails);
+            // logger.info(`Checking status for ${emails.length} users. Online: ${onlineUsers.length}`);
+            socket.emit("onlineStatusUpdate", onlineUsers);
+        } catch (e) {
+            logger.error(chalk.red(`checkOnlineStatus error: ${e}`));
+        }
     });
 
-    socket.on("disconnect", async () => {
-        logger.info(chalk.yellow("User disconnected"));
-        // Optionally remove immediately, or let heartbeat expire
-        // await setUserOffline(email); // Requires tracking email on socket object
+    socket.on("disconnect", async (reason) => {
+        logger.info(chalk.yellow(`User ${socket.id} disconnected. Reason: ${reason}`));
     });
 
     // WebRTC Signaling Events
@@ -111,10 +135,6 @@ io.on("connection", (socket) => {
     socket.on("endCall", (data) => {
         io.to(data.to).emit("callEnded");
     });
-});
-
-io.engine.on("connection_error", (err) => {
-    logger.error(chalk.red(`Socket.io Error: ${err.message}`));
 });
 
 app.get("/", (req, res) => {
